@@ -1,6 +1,7 @@
 package com.direwolf20.laserio.datagen.customrecipes;
 
 import com.direwolf20.laserio.common.items.cards.BaseCard;
+import com.direwolf20.laserio.setup.Registration;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.core.NonNullList;
@@ -12,7 +13,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
-import net.minecraftforge.registries.ObjectHolder;
 
 import java.util.List;
 
@@ -39,11 +39,11 @@ public class CardClearRecipe extends ShapelessRecipe {
 
     @Override
     public RecipeSerializer<?> getSerializer() {
-        return SERIALIZER;
+        return Registration.CARD_CLEAR_RECIPE_SERIALIZER.get();
     }
 
-    @ObjectHolder("laserio:cardclear")
-    public static CardClearRecipe.Serializer SERIALIZER;
+    //@ObjectHolder("laserio:cardclear")
+    //public static CardClearRecipe.Serializer SERIALIZER;
 
     public static class Serializer extends ShapelessRecipe.Serializer {
         private static final ResourceLocation NAME = new ResourceLocation("laserio", "cardclear");
@@ -58,7 +58,7 @@ public class CardClearRecipe extends ShapelessRecipe {
 
             for (int i = 0; i < p_44276_.size(); ++i) {
                 Ingredient ingredient = Ingredient.fromJson(p_44276_.get(i));
-                if (net.minecraftforge.common.ForgeConfig.SERVER.skipEmptyShapelessCheck.get() || !ingredient.isEmpty()) {
+                if (true || !ingredient.isEmpty()) {
                     nonnulllist.add(ingredient);
                 }
             }
