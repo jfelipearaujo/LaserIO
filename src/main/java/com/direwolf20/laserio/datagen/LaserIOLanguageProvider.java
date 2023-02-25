@@ -21,6 +21,7 @@ public class LaserIOLanguageProvider extends LanguageProvider {
         add(Registration.Card_Holder.get(), "Card Holder");
         add(Registration.Card_Item.get(), "Item Card");
         add(Registration.Card_Fluid.get(), "Fluid Card");
+        add(Registration.Card_Gas.get(), "Gas Card");
         add(Registration.Card_Energy.get(), "Energy Card");
         add(Registration.Card_Redstone.get(), "Redstone Card");
         add(Registration.Filter_Basic.get(), "Basic Filter");

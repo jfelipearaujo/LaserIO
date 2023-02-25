@@ -6,6 +6,8 @@ import com.direwolf20.laserio.common.items.filters.FilterCount;
 import com.direwolf20.laserio.common.items.filters.FilterTag;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+
+import mekanism.api.chemical.gas.Gas;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
@@ -172,6 +174,8 @@ public class EventTooltip {
             }
             matrices.popPose();
         }
+
+        // TODO: render tag stack
     }
 }
 

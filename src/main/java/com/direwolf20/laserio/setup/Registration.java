@@ -12,6 +12,7 @@ import com.direwolf20.laserio.common.items.LogicChip;
 import com.direwolf20.laserio.common.items.LogicChipRaw;
 import com.direwolf20.laserio.common.items.cards.CardEnergy;
 import com.direwolf20.laserio.common.items.cards.CardFluid;
+import com.direwolf20.laserio.common.items.cards.CardGas;
 import com.direwolf20.laserio.common.items.cards.CardItem;
 import com.direwolf20.laserio.common.items.cards.CardRedstone;
 import com.direwolf20.laserio.common.items.filters.FilterBasic;
@@ -75,6 +76,7 @@ public class Registration {
     //Cards
     public static final RegistryObject<Item> Card_Item = ITEMS.register("card_item", CardItem::new);
     public static final RegistryObject<Item> Card_Fluid = ITEMS.register("card_fluid", CardFluid::new);
+    public static final RegistryObject<Item> Card_Gas = ITEMS.register("card_gas", CardGas::new);
     public static final RegistryObject<Item> Card_Energy = ITEMS.register("card_energy", CardEnergy::new);
     public static final RegistryObject<Item> Card_Redstone = ITEMS.register("card_redstone", CardRedstone::new);
 
@@ -97,6 +99,8 @@ public class Registration {
             () -> IForgeMenuType.create((windowId, inv, data) -> new CardItemContainer(windowId, inv, inv.player, data)));
     public static final RegistryObject<MenuType<CardFluidContainer>> CardFluid_Container = CONTAINERS.register("cardfluid",
             () -> IForgeMenuType.create((windowId, inv, data) -> new CardFluidContainer(windowId, inv, inv.player, data)));
+    public static final RegistryObject<MenuType<CardGasContainer>> CardGas_Container = CONTAINERS.register("cardgas",
+            () -> IForgeMenuType.create((windowId, inv, data) -> new CardGasContainer(windowId, inv, inv.player, data)));
     public static final RegistryObject<MenuType<CardEnergyContainer>> CardEnergy_Container = CONTAINERS.register("cardenergy",
             () -> IForgeMenuType.create((windowId, inv, data) -> new CardEnergyContainer(windowId, inv, inv.player, data)));
     public static final RegistryObject<MenuType<CardRedstoneContainer>> CardRedstone_Container = CONTAINERS.register("cardredstone",

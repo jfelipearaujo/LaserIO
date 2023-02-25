@@ -33,7 +33,8 @@ public class BaseCard extends Item {
         FLUID,
         ENERGY,
         REDSTONE,
-        MISSING
+        MISSING,
+        GAS
     }
 
     public enum TransferMode {

@@ -20,6 +20,7 @@ import it.unimi.dsi.fastutil.bytes.Byte2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import mekanism.api.chemical.gas.GasStack;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -103,6 +104,7 @@ public class LaserNodeBE extends BaseLaserBE {
     private final List<InserterCardCache> inserterNodes = new CopyOnWriteArrayList<>(); //All Inventory nodes that contain an inserter card
     private final HashMap<ExtractorCardCache, HashMap<ItemStackKey, List<InserterCardCache>>> inserterCache = new HashMap<>();
     private final HashMap<ExtractorCardCache, HashMap<FluidStackKey, List<InserterCardCache>>> inserterCacheFluid = new HashMap<>();
+    private final HashMap<ExtractorCardCache, HashMap<GasStackKey, List<InserterCardCache>>> inserterCacheGas = new HashMap<>();
     private final HashMap<ExtractorCardCache, List<InserterCardCache>> channelOnlyCache = new HashMap<>();
     private final List<ParticleRenderData> particleRenderData = new ArrayList<>();
     private final List<ParticleRenderDataFluid> particleRenderDataFluids = new ArrayList<>();
@@ -518,6 +520,35 @@ public class LaserNodeBE extends BaseLaserBE {
             return nodes;
         }
     }
+
+    public List<InserterCardCache> getPossibleInserters(ExtractorCardCache extractorCardCache, GasStack stack) {
+      GasStackKey key = new GasStackKey(stack, true);
+      if (inserterCacheGas.containsKey(extractorCardCache)) { //If this extractor card is already in the cache
+          if (inserterCacheGas.get(extractorCardCache).containsKey(key)) //If this extractor card AND itemKey are already in the cache
+              return inserterCacheGas.get(extractorCardCache).get(key); //Return the cached results
+          else { //Find the list of items that can be extracted by this extractor and cache them
+              List<InserterCardCache> nodes = inserterNodes.stream().filter(p -> (p.channel == extractorCardCache.channel)
+                              && (p.enabled)
+                              && (p.isStackValidForCard(stack))
+                              && (p.cardType.equals(extractorCardCache.cardType))
+                              && (!(p.relativePos.equals(BlockPos.ZERO) && p.direction.equals(extractorCardCache.direction))))
+                      .toList();
+              inserterCacheGas.get(extractorCardCache).put(key, nodes);
+              return nodes;
+          }
+      } else { //Find the list of items that can be extracted by this extractor and cache them along with the extractor card
+          List<InserterCardCache> nodes = inserterNodes.stream().filter(p -> (p.channel == extractorCardCache.channel)
+                          && (p.enabled)
+                          && (p.isStackValidForCard(stack))
+                          && (p.cardType.equals(extractorCardCache.cardType))
+                          && (!(p.relativePos.equals(BlockPos.ZERO) && p.direction.equals(extractorCardCache.direction))))
+                  .toList();
+          HashMap<GasStackKey, List<InserterCardCache>> tempMap = new HashMap<>();
+          tempMap.put(key, nodes);
+          inserterCacheGas.put(extractorCardCache, tempMap);
+          return nodes;
+      }
+  }
 
     /** Finds all inserters that match the channel (Used for stockers) **/
     public List<InserterCardCache> getChannelMatchInserters(ExtractorCardCache extractorCardCache) {

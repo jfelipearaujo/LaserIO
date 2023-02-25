@@ -43,6 +43,7 @@ public class ClientSetup {
             MenuScreens.register(Registration.LaserNode_Container.get(), LaserNodeScreen::new);           // Attach our container to the screen
             MenuScreens.register(Registration.CardItem_Container.get(), CardItemScreen::new);           // Attach our container to the screen
             MenuScreens.register(Registration.CardFluid_Container.get(), CardFluidScreen::new);           // Attach our container to the screen
+            MenuScreens.register(Registration.CardGas_Container.get(), CardGasScreen::new);           // Attach our container to the screen
             MenuScreens.register(Registration.CardEnergy_Container.get(), CardEnergyScreen::new);           // Attach our container to the screen
             MenuScreens.register(Registration.CardRedstone_Container.get(), CardRedstoneScreen::new);           // Attach our container to the screen
             MenuScreens.register(Registration.CardHolder_Container.get(), CardHolderScreen::new);           // Attach our container to the screen
@@ -63,6 +64,12 @@ public class ClientSetup {
                     new ResourceLocation(LaserIO.MODID, "mode"), (stack, level, living, id) -> {
                         return (int) BaseCard.getTransferMode(stack);
                     });
+        });
+        event.enqueueWork(() -> {
+          ItemProperties.register(Registration.Card_Gas.get(),
+                  new ResourceLocation(LaserIO.MODID, "mode"), (stack, level, living, id) -> {
+                      return (int) BaseCard.getTransferMode(stack);
+                  });
         });
         event.enqueueWork(() -> {
             ItemProperties.register(Registration.Card_Energy.get(),
@@ -120,6 +127,18 @@ public class ClientSetup {
             }
             return 0xFFFFFFFF;
         }, Registration.Card_Fluid.get());
+        colors.register((stack, index) -> {
+          if (index == 2) {
+              if (BaseCard.getTransferMode(stack) == (byte) 3) {
+                  Color color = LaserNodeBERender.colors[BaseCard.getRedstoneChannel(stack)];
+                  return color.getRGB();
+              } else {
+                  Color color = LaserNodeBERender.colors[BaseCard.getChannel(stack)];
+                  return color.getRGB();
+              }
+          }
+          return 0xFFFFFFFF;
+      }, Registration.Card_Gas.get());
         colors.register((stack, index) -> {
             if (index == 2) {
                 if (BaseCard.getTransferMode(stack) == (byte) 3) {
