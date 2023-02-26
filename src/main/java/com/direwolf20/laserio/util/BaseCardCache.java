@@ -15,6 +15,7 @@ import mekanism.common.capabilities.Capabilities;
 import net.minecraft.core.Direction;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.common.capabilities.Capability;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.FluidUtil;
 import net.minecraftforge.fluids.capability.IFluidHandler;
@@ -159,6 +160,38 @@ public class BaseCardCache {
         filterCountsFluid.put(key, 0);
         return 0; //Should never get here in theory
     }
+
+    public int getFilterAmt(GasStack testStack) {
+      if (filterCard.equals(ItemStack.EMPTY))
+          return 0; //If theres no filter in the card (This should never happen in theory)
+      if (!(filterCard.getItem() instanceof FilterCount)) { //If this is a basic or tag Card return -1 which will mean infinite amount
+          return -1;
+      }
+      GasStackKey key = new GasStackKey(testStack, isCompareNBT);
+      if (filterCountsGas.containsKey(key)) //If we've already tested this, get it from the cache
+          return filterCountsGas.get(key);
+
+      ItemStackHandler filterSlotHandler = FilterCount.getInventory(filterCard);
+      for (int i = 0; i < filterSlotHandler.getSlots(); i++) { //Gotta iterate the card's NBT because of the way we store amounts (in the MBAmt tag)
+          ItemStack itemStack = filterSlotHandler.getStackInSlot(i);
+          if (!itemStack.isEmpty()) {
+              Optional<IGasHandler> gasHandlerLazyOptional = itemStack.getCapability(Capabilities.GAS_HANDLER).resolve();
+              if (gasHandlerLazyOptional.isEmpty()) 
+                continue;
+              IGasHandler gasHandler = gasHandlerLazyOptional.get();
+              for (int tank = 0; tank < gasHandler.getTanks(); tank++) {
+                  GasStack gasStack = gasHandler.getChemicalInTank(tank);
+                  if (key.equals(new GasStackKey(gasStack, isCompareNBT))) {
+                      int mbAmt = FilterCount.getSlotAmount(filterCard, i);
+                      filterCountsGas.put(key, mbAmt);
+                      return mbAmt;
+                  }
+              }
+          }
+      }
+      filterCountsGas.put(key, 0);
+      return 0; //Should never get here in theory
+  }
 
     public List<ItemStack> getFilteredItems() {
         List<ItemStack> filteredItems = new ArrayList<>();

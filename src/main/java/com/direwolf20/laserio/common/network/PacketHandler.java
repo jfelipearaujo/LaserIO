@@ -40,9 +40,8 @@ public class PacketHandler {
 
         //Client Side
         HANDLER.registerMessage(id++, PacketNodeParticles.class, PacketNodeParticles::encode, PacketNodeParticles::decode, PacketNodeParticles.Handler::handle);
-        HANDLER.registerMessage(id++, PacketNodeParticlesFluid.class, PacketNodeParticlesFluid::encode, PacketNodeParticlesFluid::decode, PacketNodeParticlesFluid.Handler::handle);
-        // TODO: **maybe** handle particles?!
-        //HANDLER.registerMessage(id++, PacketDurabilitySync.class,     PacketDurabilitySync::encode,       PacketDurabilitySync::decode,       PacketDurabilitySync.Handler::handle);
+        HANDLER.registerMessage(id++, PacketNodeParticlesFluid.class, PacketNodeParticlesFluid::encode, PacketNodeParticlesFluid::decode, PacketNodeParticlesFluid.Handler::handle);        
+        HANDLER.registerMessage(id++, PacketNodeParticlesGas.class,     PacketNodeParticlesGas::encode,       PacketNodeParticlesGas::decode,       PacketNodeParticlesGas.Handler::handle);
 
     }
 

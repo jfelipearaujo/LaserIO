@@ -25,9 +25,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelManager;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.ItemStack;
 import java.util.Optional;
 
@@ -238,6 +236,39 @@ public class LaserIOItemRendererGas extends ItemRenderer {
             return reverseBounds;
         }    
         return !reverseBounds;
+    }
+
+    public void renderFluid(GasStack gasStack, int pX, int pY, int size) {
+        Gas gas = gasStack.getType();      
+        TextureAtlasSprite fluidStillSprite = MekanismRenderer.getChemicalTexture(gas);
+        int gasColor = gas.getTint();
+
+        float red = (float) (gasColor >> 16 & 255) / 255.0F;
+        float green = (float) (gasColor >> 8 & 255) / 255.0F;
+        float blue = (float) (gasColor & 255) / 255.0F;
+
+        RenderSystem.setShaderTexture(0, TextureAtlas.LOCATION_BLOCKS);
+
+        PoseStack posestack = RenderSystem.getModelViewStack();
+        posestack.pushPose();
+        RenderSystem.setShaderColor(red, green, blue, 1.0f);
+        int zLevel = 100;
+        float uMin = fluidStillSprite.getU0();
+        float uMax = fluidStillSprite.getU1();
+        float vMin = fluidStillSprite.getV0();
+        float vMax = fluidStillSprite.getV1();
+
+        Tesselator tessellator = Tesselator.getInstance();
+        BufferBuilder vertexBuffer = tessellator.getBuilder();
+
+        vertexBuffer.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        vertexBuffer.vertex(pX, pY + size, zLevel).uv(uMin, vMax).endVertex();
+        vertexBuffer.vertex(pX + size, pY + size, zLevel).uv(uMax, vMax).endVertex();
+        vertexBuffer.vertex(pX + size, pY, zLevel).uv(uMax, vMin).endVertex();
+        vertexBuffer.vertex(pX, pY, zLevel).uv(uMin, vMin).endVertex();
+        tessellator.end();
+        posestack.popPose();
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     @Override

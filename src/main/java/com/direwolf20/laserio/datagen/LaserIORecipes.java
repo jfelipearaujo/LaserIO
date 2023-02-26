@@ -114,7 +114,7 @@ public class LaserIORecipes extends RecipeProvider {
                 .pattern("qpq")
                 .pattern("ggg")
                 .define('r', Tags.Items.DUSTS_REDSTONE)
-                .define('p', Registration.Logic_Chip.get())
+                .define('p', Registration.Logic_Chip.get()) // TODO: how to load Mekanins tag items?
                 .define('g', Tags.Items.NUGGETS_GOLD)
                 .define('l', Items.BUCKET)
                 .define('q', Tags.Items.GEMS_QUARTZ)

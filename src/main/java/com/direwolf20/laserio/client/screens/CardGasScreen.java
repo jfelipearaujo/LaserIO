@@ -1,13 +1,11 @@
 package com.direwolf20.laserio.client.screens;
 
-import com.direwolf20.laserio.client.renderer.LaserIOItemRendererFluid;
 import com.direwolf20.laserio.client.renderer.LaserIOItemRendererGas;
 import com.direwolf20.laserio.client.screens.widgets.NumberButton;
 import com.direwolf20.laserio.client.screens.widgets.ToggleButton;
 import com.direwolf20.laserio.common.LaserIO;
 import com.direwolf20.laserio.common.containers.CardItemContainer;
 import com.direwolf20.laserio.common.items.cards.BaseCard;
-import com.direwolf20.laserio.common.items.cards.CardFluid;
 import com.direwolf20.laserio.common.items.cards.CardGas;
 import com.direwolf20.laserio.common.items.filters.FilterCount;
 import com.direwolf20.laserio.common.network.PacketHandler;
@@ -15,6 +13,7 @@ import com.direwolf20.laserio.common.network.packets.PacketGhostSlot;
 import com.direwolf20.laserio.common.network.packets.PacketOpenNode;
 import com.direwolf20.laserio.common.network.packets.PacketUpdateCard;
 import com.direwolf20.laserio.common.network.packets.PacketUpdateFilter;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;

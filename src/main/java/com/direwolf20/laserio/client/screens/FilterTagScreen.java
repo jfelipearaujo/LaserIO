@@ -2,6 +2,7 @@ package com.direwolf20.laserio.client.screens;
 
 import com.direwolf20.laserio.client.renderer.LaserIOItemRenderer;
 import com.direwolf20.laserio.client.renderer.LaserIOItemRendererFluid;
+import com.direwolf20.laserio.client.renderer.LaserIOItemRendererGas;
 import com.direwolf20.laserio.client.screens.widgets.IconButton;
 import com.direwolf20.laserio.client.screens.widgets.ToggleButton;
 import com.direwolf20.laserio.common.LaserIO;
@@ -16,6 +17,14 @@ import com.direwolf20.laserio.util.MiscTools;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+
+import mekanism.api.MekanismAPI;
+import mekanism.api.chemical.ChemicalUtils;
+import mekanism.api.chemical.gas.Gas;
+import mekanism.api.chemical.gas.GasStack;
+import mekanism.api.chemical.gas.IGasHandler;
+import mekanism.api.datagen.tag.ChemicalTagsProvider.GasTagsProvider;
+import mekanism.common.capabilities.Capabilities;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -58,7 +67,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
     int cycleRenders = 0;
     LaserIOItemRenderer tagItemRenderer;
     LaserIOItemRendererFluid tagFluidRenderer;
-
+    LaserIOItemRendererGas tagGasRenderer;
 
     public FilterTagScreen(FilterTagContainer container, Inventory inv, Component name) {
         super(container, inv, name);
@@ -71,6 +80,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
         BlockEntityWithoutLevelRenderer blockentitywithoutlevelrenderer = new BlockEntityWithoutLevelRenderer(minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
         tagItemRenderer = new LaserIOItemRenderer(minecraft.getTextureManager(), minecraft.getModelManager(), minecraft.getItemColors(), blockentitywithoutlevelrenderer);
         tagFluidRenderer = new LaserIOItemRendererFluid(minecraft.getTextureManager(), minecraft.getModelManager(), minecraft.getItemColors(), blockentitywithoutlevelrenderer, this);
+        tagGasRenderer = new LaserIOItemRendererGas(minecraft.getTextureManager(), minecraft.getModelManager(), minecraft.getItemColors(), blockentitywithoutlevelrenderer, this);
     }
 
     @Override
@@ -120,10 +130,18 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
                     });
                 }
             }
+
+            Optional<IGasHandler> gasHandlerLazyOptional = stackInSlot.getCapability(Capabilities.GAS_HANDLER).resolve();
+            if (gasHandlerLazyOptional.isPresent()) {
+                IGasHandler gasHandler = gasHandlerLazyOptional.get();
+                for (int tank = 0; tank < gasHandler.getTanks(); tank++) {
+                    GasStack gasStack = gasHandler.getChemicalInTank(tank);
+                    // TODO: handle gas tags
+                }
+            }
         }
 
         int tagsPerPage = 11;
-
 
         stackInSlotTags.sort(Comparator.naturalOrder());
         tags.sort(Comparator.naturalOrder());
@@ -173,6 +191,21 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
                 }
                 matrixStack.popPose();
             }
+
+            // TODO: handle gases 'buckets'
+            // List<Gas> tagGases = MekanismAPI.gasRegistry().tags().getTag().stream().toList();
+            // GasStack drawGasStack = GasStack.EMPTY;
+            // if (tagGases.size() > 0) {
+            //     drawGasStack = new GasStack(tagGases.get((cycleRenders / 120) % tagGases.size()), 1000);
+            //     matrixStack.pushPose();
+            //     if (!drawGasStack.isEmpty()) {                    
+            //         bucketStack = new ItemStack(drawGasStack.get , 1);
+            //         if (!bucketStack.isEmpty())
+            //             tagItemRenderer.renderGuiItem(8f, bucketStack, (availableItemsstartX) - 4, (tagStartY) - 5, itemRenderer.getModel(bucketStack, null, null, 0));                    
+            //     }
+            //     matrixStack.popPose();
+            // }
+
             matrixStack.pushPose();
             matrixStack.scale(0.75f, 0.75f, 0.75f);
             int fontColor = stackInSlotTags.contains(tag) ? Color.BLUE.getRGB() : Color.DARK_GRAY.getRGB();

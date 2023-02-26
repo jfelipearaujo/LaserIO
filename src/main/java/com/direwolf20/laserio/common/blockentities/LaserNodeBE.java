@@ -1,6 +1,7 @@
 package com.direwolf20.laserio.common.blockentities;
 
 import com.direwolf20.laserio.client.particles.fluidparticle.FluidFlowParticleData;
+import com.direwolf20.laserio.client.particles.gasparticle.GasFlowParticleData;
 import com.direwolf20.laserio.client.particles.itemparticle.ItemFlowParticleData;
 import com.direwolf20.laserio.common.blockentities.basebe.BaseLaserBE;
 import com.direwolf20.laserio.common.blocks.LaserNode;
@@ -20,7 +21,12 @@ import it.unimi.dsi.fastutil.bytes.Byte2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
+import mekanism.api.Action;
+import mekanism.api.chemical.ChemicalUtils;
 import mekanism.api.chemical.gas.GasStack;
+import mekanism.api.chemical.gas.IGasHandler;
+import mekanism.common.capabilities.Capabilities;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -36,6 +42,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.common.capabilities.Capability;
+import net.minecraftforge.common.capabilities.CapabilityManager;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.common.util.NonNullConsumer;
 import net.minecraftforge.energy.CapabilityEnergy;
@@ -86,6 +93,10 @@ public class LaserNodeBE extends BaseLaserBE {
 
     }
 
+    private record LaserNodeGasHandler(LaserNodeBE be, IGasHandler handler) {
+
+    }
+
     private record LaserNodeEnergyHandler(LaserNodeBE be, IEnergyStorage handler) {
 
     }
@@ -96,6 +107,8 @@ public class LaserNodeBE extends BaseLaserBE {
     private final Map<SideConnection, NonNullConsumer<LazyOptional<IItemHandler>>> connectionInvalidatorItem = new HashMap<>();
     private final Map<SideConnection, LazyOptional<IFluidHandler>> facingHandlerFluid = new HashMap<>();
     private final Map<SideConnection, NonNullConsumer<LazyOptional<IFluidHandler>>> connectionInvalidatorFluid = new HashMap<>();
+    private final Map<SideConnection, LazyOptional<IGasHandler>> facingHandlerGas = new HashMap<>();
+    private final Map<SideConnection, NonNullConsumer<LazyOptional<IGasHandler>>> connectionInvalidatorGas = new HashMap<>();
     private final Map<SideConnection, LazyOptional<IEnergyStorage>> facingHandlerEnergy = new HashMap<>();
     private final Map<SideConnection, NonNullConsumer<LazyOptional<IEnergyStorage>>> connectionInvalidatorEnergy = new HashMap<>();
 
@@ -108,6 +121,7 @@ public class LaserNodeBE extends BaseLaserBE {
     private final HashMap<ExtractorCardCache, List<InserterCardCache>> channelOnlyCache = new HashMap<>();
     private final List<ParticleRenderData> particleRenderData = new ArrayList<>();
     private final List<ParticleRenderDataFluid> particleRenderDataFluids = new ArrayList<>();
+    private final List<ParticleRenderDataGas> particleRenderDataGases = new ArrayList<>();
     private final Random random = new Random();
 
     private record StockerRequest(StockerCardCache stockerCardCache, ItemStackKey itemStackKey) {
@@ -208,6 +222,9 @@ public class LaserNodeBE extends BaseLaserBE {
                         } else if (extractorCardCache.cardType.equals(BaseCard.CardType.ENERGY)) {
                             if (stockEnergy(stockerCardCache))
                                 countCardsHandled++;
+                        } else if (extractorCardCache.cardType.equals(BaseCard.CardType.GAS)) {
+                            if (stockGases(stockerCardCache))
+                                countCardsHandled++;
                         }
                     } else {
                         if (extractorCardCache.cardType.equals(BaseCard.CardType.ITEM)) {
@@ -218,6 +235,9 @@ public class LaserNodeBE extends BaseLaserBE {
                                 countCardsHandled++;
                         } else if (extractorCardCache.cardType.equals(BaseCard.CardType.ENERGY)) {
                             if (sendEnergy(extractorCardCache))
+                                countCardsHandled++;
+                        } else if (extractorCardCache.cardType.equals(BaseCard.CardType.GAS)) {
+                            if (sendGases(extractorCardCache))
                                 countCardsHandled++;
                         }
                     }
@@ -250,6 +270,9 @@ public class LaserNodeBE extends BaseLaserBE {
                         } else if (extractorCardCache.cardType.equals(BaseCard.CardType.ENERGY)) {
                             if (senseEnergy(sensorCardCache))
                                 countCardsHandled++;
+                        } else if (extractorCardCache.cardType.equals(BaseCard.CardType.GAS)) {
+                            if (senseGases(sensorCardCache))
+                                countCardsHandled++;
                         }
                     }
                     if (extractorCardCache.remainingSleep <= 0) {
@@ -264,6 +287,7 @@ public class LaserNodeBE extends BaseLaserBE {
         drawParticlesClient();
         particleRenderData.clear();
         particleRenderDataFluids.clear();
+        particleRenderDataGases.clear();
     }
 
     public void tickServer() {
@@ -911,6 +935,92 @@ public class LaserNodeBE extends BaseLaserBE {
         return true;
     }
 
+    public boolean senseGases(SensorCardCache sensorCardCache) {
+        BlockPos adjacentPos = getBlockPos().relative(sensorCardCache.direction);
+        assert level != null;
+        if (!level.isLoaded(adjacentPos)) return false;
+        NodeSideCache nodeSideCache = nodeSideCaches[sensorCardCache.direction.ordinal()];
+        Optional<IGasHandler> adjacentTankOptional = getAttachedGasTank(sensorCardCache.direction, sensorCardCache.sneaky).resolve();
+        if (adjacentTankOptional.isEmpty()) { //Needs a filter
+            if (updateRedstoneFromSensor(false, sensorCardCache.redstoneChannel, nodeSideCache)) {
+                rendersChecked = false;
+                clearCachedInventories();
+                redstoneChecked = false;
+            }
+            return false;
+        }
+        IGasHandler adacentTank = adjacentTankOptional.get();
+
+        ItemStack filter = sensorCardCache.filterCard;
+        boolean andMode = BaseCard.getAnd(sensorCardCache.cardItem);
+        boolean filterMatched = false;
+
+        if (filter.isEmpty()) { //Needs a filter
+            if (updateRedstoneFromSensor(false, sensorCardCache.redstoneChannel, nodeSideCache)) {
+                rendersChecked = false;
+                clearCachedInventories();
+                redstoneChecked = false;
+            }
+            return false;
+        }
+        if (filter.getItem() instanceof FilterBasic) {
+            List<GasStack> filteredGases = sensorCardCache.getFilteredGases();
+            List<GasStack> filteredGasesOriginal = new ArrayList<>(filteredGases);
+
+            outloop:
+            for (GasStack gasStack : filteredGasesOriginal) {
+                for (int tank = 0; tank < adacentTank.getTanks(); tank++) { //Loop through all the tanks
+                  GasStack stackInTank = adacentTank.getChemicalInTank(tank);
+                    if (stackInTank.isTypeEqual(gasStack)) {
+                        filteredGases.remove(gasStack);
+                        if (!andMode) {
+                            break outloop;
+                        }
+                    }
+                }
+            }
+            if (andMode)
+                filterMatched = filteredGases.size() == 0;
+            else
+                filterMatched = filteredGases.size() < filteredGasesOriginal.size();
+        } else if (filter.getItem() instanceof FilterCount) {
+            List<GasStack> filteredGases = sensorCardCache.getFilteredGases();
+            List<GasStack> filteredGasesOriginal = new ArrayList<>(filteredGases);
+
+            outloop:
+            for (GasStack gasStack : filteredGasesOriginal) {
+                int desiredAmt = sensorCardCache.getFilterAmt(gasStack);
+                for (int tank = 0; tank < adacentTank.getTanks(); tank++) { //Loop through all the tanks
+                  GasStack stackInTank = adacentTank.getChemicalInTank(tank);
+                    if (stackInTank.isTypeEqual(gasStack)) {
+                        long amtHad = stackInTank.getAmount();
+                        if (amtHad < desiredAmt || (sensorCardCache.exact && amtHad > desiredAmt)) {
+                            //noOp
+                        } else {
+                            filteredGases.remove(gasStack);
+                            if (!andMode) {
+                                break outloop;
+                            }
+                        }
+                    }
+                }
+            }
+            if (andMode)
+                filterMatched = filteredGases.size() == 0;
+            else
+                filterMatched = filteredGases.size() < filteredGasesOriginal.size();
+        } else if (filter.getItem() instanceof FilterTag) {
+            // TODO: implement FilterTag
+        }
+        if (updateRedstoneFromSensor(filterMatched, sensorCardCache.redstoneChannel, nodeSideCache)) {
+            //System.out.println("Redstone network change detected");
+            rendersChecked = false;
+            clearCachedInventories();
+            redstoneChecked = false;
+        }
+        return true;
+    }
+
     public boolean senseEnergy(SensorCardCache sensorCardCache) {
         BlockPos adjacentPos = getBlockPos().relative(sensorCardCache.direction);
         assert level != null;
@@ -1032,6 +1142,60 @@ public class LaserNodeBE extends BaseLaserBE {
         return foundAnything;
     }
 
+    public boolean extractGasStack(ExtractorCardCache extractorCardCache, IGasHandler fromInventory, GasStack extractStack) {
+        long totalAmtNeeded = extractStack.getAmount();
+        long amtToExtract = extractStack.getAmount();
+        List<InserterCardCache> inserterCardCaches = getPossibleInserters(extractorCardCache, extractStack);
+        int roundRobin = -1;
+        boolean foundAnything = false;
+        if (extractorCardCache.roundRobin != 0) {
+            roundRobin = getRR(extractorCardCache);
+            inserterCardCaches = applyRR(extractorCardCache, inserterCardCaches, roundRobin);
+        }
+
+        for (InserterCardCache inserterCardCache : inserterCardCaches) {
+            LaserNodeGasHandler laserNodeGasHandler = getLaserNodeHandlerGas(inserterCardCache);
+            if (laserNodeGasHandler == null) continue;
+            IGasHandler handler = laserNodeGasHandler.handler;
+            //for (int tank = 0; tank < handler.getTanks(); tank++) {
+            if (inserterCardCache.filterCard.getItem() instanceof FilterCount) {
+                int filterCount = inserterCardCache.getFilterAmt(extractStack);
+                for (int tank = 0; tank < handler.getTanks(); tank++) {
+                    GasStack gasStack = handler.getChemicalInTank(tank);
+                    if (gasStack.isEmpty() || gasStack.isTypeEqual(extractStack)) {
+                        long currentAmt = gasStack.getAmount();
+                        long neededAmt = filterCount - currentAmt;
+                        if (neededAmt < extractStack.getAmount()) {
+                            amtToExtract = neededAmt;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (amtToExtract == 0) {
+                amtToExtract = totalAmtNeeded;
+                continue;
+            }
+            extractStack.setAmount(amtToExtract);         
+
+            GasStack drainedStack = fromInventory.extractChemical(extractStack, Action.EXECUTE);
+            if (drainedStack.isEmpty()) 
+              continue; //If we didn't get anything for whatever reason
+
+            foundAnything = true;
+            handler.insertChemical(extractStack, Action.EXECUTE);
+            drawParticlesGas(extractStack, extractorCardCache.direction, extractorCardCache.be, inserterCardCache.be, inserterCardCache.direction, extractorCardCache.cardSlot, inserterCardCache.cardSlot);
+            totalAmtNeeded -= extractStack.getAmount();
+            amtToExtract = totalAmtNeeded;
+            if (extractorCardCache.roundRobin != 0) 
+              getNextRR(extractorCardCache, inserterCardCaches);
+            if (totalAmtNeeded == 0) 
+              return true;
+        }
+
+        return foundAnything;
+    }
+
     public boolean extractFluidStackExact(ExtractorCardCache extractorCardCache, IFluidHandler fromInventory, FluidStack extractStack) {
         int totalAmtNeeded = extractStack.getAmount();
         int amtToExtract = extractStack.getAmount();
@@ -1101,6 +1265,75 @@ public class LaserNodeBE extends BaseLaserBE {
         return true;
     }
 
+    public boolean extractGasStackExact(ExtractorCardCache extractorCardCache, IGasHandler fromInventory, GasStack extractStack) {
+        long totalAmtNeeded = extractStack.getAmount();
+        long amtToExtract = extractStack.getAmount();
+        List<InserterCardCache> inserterCardCaches = getPossibleInserters(extractorCardCache, extractStack);
+        int roundRobin = -1;
+
+        if (extractorCardCache.roundRobin != 0) {
+            roundRobin = getRR(extractorCardCache);
+            inserterCardCaches = applyRR(extractorCardCache, inserterCardCaches, roundRobin);
+        }
+
+        Map<InserterCardCache, Long> insertHandlers = new Object2LongOpenHashMap<>();
+
+        for (InserterCardCache inserterCardCache : inserterCardCaches) {
+            LaserNodeGasHandler laserNodeGasHandler = getLaserNodeHandlerGas(inserterCardCache);
+            if (laserNodeGasHandler == null) continue;
+            IGasHandler handler = laserNodeGasHandler.handler;
+            if (inserterCardCache.filterCard.getItem() instanceof FilterCount) {
+                int filterCount = inserterCardCache.getFilterAmt(extractStack);
+                for (int tank = 0; tank < handler.getTanks(); tank++) {
+                    GasStack gasStack = handler.getChemicalInTank(tank);
+                    if (gasStack.isEmpty() || gasStack.isTypeEqual(extractStack)) {
+                        long currentAmt = gasStack.getAmount();
+                        long neededAmt = filterCount - currentAmt;
+                        if (neededAmt < totalAmtNeeded) {
+                            amtToExtract = neededAmt;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (amtToExtract == 0) {
+                amtToExtract = totalAmtNeeded;
+                continue;
+            }
+            extractStack.setAmount(amtToExtract);
+            long amtFit = handler.extractChemical(extractStack,Action.SIMULATE).getAmount();
+            if (amtFit == 0) { //Next inserter if nothing went in -- return false if enforcing round robin
+                if (extractorCardCache.roundRobin == 2) {
+                    return false;
+                }
+                if (extractorCardCache.roundRobin != 0) getNextRR(extractorCardCache, inserterCardCaches);
+                continue;
+            }
+            extractStack.setAmount(amtFit);
+            GasStack drainedStack = fromInventory.extractChemical(extractStack, Action.SIMULATE);
+            if (drainedStack.isEmpty()) continue; //If we didn't get anything for whatever reason
+            insertHandlers.put(inserterCardCache, drainedStack.getAmount()); //Add the handler to the list of handlers we found fluid in
+            totalAmtNeeded -= drainedStack.getAmount(); //Keep track of how much we have left to insert
+            amtToExtract = totalAmtNeeded;
+            if (extractorCardCache.roundRobin != 0) getNextRR(extractorCardCache, inserterCardCaches);
+            if (totalAmtNeeded == 0) break;
+        }
+
+        if (totalAmtNeeded > 0) return false;
+
+        for (Map.Entry<InserterCardCache, Long> entry : insertHandlers.entrySet()) {
+            InserterCardCache inserterCardCache = entry.getKey();
+            LaserNodeGasHandler laserNodeGasHandler = getLaserNodeHandlerGas(inserterCardCache);
+            IGasHandler handler = laserNodeGasHandler.handler;
+            extractStack.setAmount(entry.getValue());
+            GasStack drainedStack = fromInventory.extractChemical(extractStack, Action.EXECUTE);
+            handler.insertChemical(drainedStack, Action.EXECUTE);
+            drawParticlesGas(drainedStack, extractorCardCache.direction, extractorCardCache.be, inserterCardCache.be, inserterCardCache.direction, extractorCardCache.cardSlot, inserterCardCache.cardSlot);
+        }
+
+        return true;
+    }
+
     /** Extractor Cards call this, and try to find an inserter card to send their items to **/
     public boolean sendFluids(ExtractorCardCache extractorCardCache) {
         BlockPos adjacentPos = getBlockPos().relative(extractorCardCache.direction);
@@ -1130,6 +1363,42 @@ public class LaserNodeBE extends BaseLaserBE {
                     return true;
             } else {
                 if (extractFluidStack(extractorCardCache, adjacentTank, extractStack))
+                    return true;
+            }
+
+
+        }
+        return false;
+    }
+
+    public boolean sendGases(ExtractorCardCache extractorCardCache) {
+        BlockPos adjacentPos = getBlockPos().relative(extractorCardCache.direction);
+        assert level != null;
+        if (!level.isLoaded(adjacentPos)) return false;
+        LazyOptional<IGasHandler> adjacentTankOptional = getAttachedGasTank(extractorCardCache.direction, extractorCardCache.sneaky);
+        if (!adjacentTankOptional.isPresent()) return false;
+        IGasHandler adjacentTank = adjacentTankOptional.resolve().get();
+        for (int tank = 0; tank < adjacentTank.getTanks(); tank++) {
+            GasStack gasStack = adjacentTank.getChemicalInTank(tank);
+            if (gasStack.isEmpty() || !extractorCardCache.isStackValidForCard(gasStack)) continue;
+            GasStack extractStack = gasStack.copy();
+            extractStack.setAmount(extractorCardCache.extractAmt);
+
+            if (extractorCardCache.filterCard.getItem() instanceof FilterCount) { //If this is a count filter, only try to extract up to the amount in the filter
+                int filterCount = extractorCardCache.getFilterAmt(extractStack);
+                if (filterCount <= 0) continue; //This should never happen in theory...
+                long amtInInv = gasStack.getAmount();
+                long amtAllowedToRemove = amtInInv - filterCount;
+                if (amtAllowedToRemove <= 0) continue;
+                long amtRemaining = Math.min(extractStack.getAmount(), amtAllowedToRemove);
+                extractStack.setAmount(amtRemaining);
+            }
+
+            if (extractorCardCache.exact) {
+                if (extractGasStackExact(extractorCardCache, adjacentTank, extractStack))
+                    return true;
+            } else {
+                if (extractGasStack(extractorCardCache, adjacentTank, extractStack))
                     return true;
             }
 
@@ -1341,9 +1610,22 @@ public class LaserNodeBE extends BaseLaserBE {
         return false;
     }
 
+    public boolean canAnyGasFiltersFit(IGasHandler adjacentTank, StockerCardCache stockerCardCache) {
+        for (GasStack gasStack : stockerCardCache.getFilteredGases()) {
+            long amtFit = adjacentTank.insertChemical(gasStack, Action.SIMULATE).getAmount();
+            if (amtFit > 0)
+                return true;
+        }
+        return false;
+    }
+
     public boolean canFluidFitInTank(IFluidHandler handler, FluidStack fluidStack) {
         return (handler.fill(fluidStack, IFluidHandler.FluidAction.SIMULATE) > 0);
     }
+
+    public boolean canGasFitInTank(IGasHandler handler, GasStack gasStack) {
+      return handler.isValid(UPDATE_ALL, gasStack);
+  }
 
     public boolean regulateItemStocker(StockerCardCache stockerCardCache, IItemHandler stockerInventory) {
         ItemHandlerUtil.InventoryCounts stockerInventoryCount = new ItemHandlerUtil.InventoryCounts(stockerInventory, stockerCardCache.isCompareNBT);
@@ -1373,6 +1655,25 @@ public class LaserNodeBE extends BaseLaserBE {
             if (amtHad > desiredAmt) { //If we have too much of this fluid, remove the difference.
                 fluidStack.setAmount(Math.min(amtHad - desiredAmt, stockerCardCache.extractAmt));
                 if (extractFluidStack(stockerCardCache, stockerTank, fluidStack))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean regulateGasStocker(StockerCardCache stockerCardCache, IGasHandler stockerTank) {
+        List<GasStack> filteredGasesList = stockerCardCache.getFilteredGases();
+        for (GasStack gasStack : filteredGasesList) { //Iterate the list of filtered items for extracting purposes
+            int desiredAmt = stockerCardCache.getFilterAmt(gasStack);
+            int amtHad = 0;
+            for (int tank = 0; tank < stockerTank.getTanks(); tank++) { //Loop through all the tanks
+              GasStack stackInTank = stockerTank.getChemicalInTank(tank);
+                if (stackInTank.isTypeEqual(gasStack))
+                    amtHad += stackInTank.getAmount();
+            }
+            if (amtHad > desiredAmt) { //If we have too much of this fluid, remove the difference.
+                gasStack.setAmount(Math.min(amtHad - desiredAmt, stockerCardCache.extractAmt));
+                if (extractGasStack(stockerCardCache, stockerTank, gasStack))
                     return true;
             }
         }
@@ -1428,6 +1729,38 @@ public class LaserNodeBE extends BaseLaserBE {
                 return false; //If we can't fit any of our filtered items into this inventory, don't bother scanning for them
             }
             boolean foundItems = findFluidStackForStocker(stockerCardCache, adacentTank); //Start looking for this item
+            if (foundItems)
+                return true;
+
+            //If we get to this line of code, it means we found none of the filter
+            //stockerCardCache.setRemainingSleep(stockerCardCache.tickSpeed * 5);
+        } else if (filter.getItem() instanceof FilterTag) {
+
+        }
+        return false;
+    }
+
+    public boolean stockGases(StockerCardCache stockerCardCache) {
+        BlockPos adjacentPos = getBlockPos().relative(stockerCardCache.direction);
+        assert level != null;
+        if (!level.isLoaded(adjacentPos)) return false;
+        Optional<IGasHandler> adjacentTankOptional = getAttachedGasTank(stockerCardCache.direction, stockerCardCache.sneaky).resolve();
+        if (adjacentTankOptional.isEmpty()) return false;
+        IGasHandler adacentTank = adjacentTankOptional.get();
+
+        ItemStack filter = stockerCardCache.filterCard;
+        if (filter.isEmpty() || !stockerCardCache.isAllowList) { //Needs a filter - at least for now? Also must be in whitelist mode
+            return false;
+        }
+        if (filter.getItem() instanceof FilterBasic || filter.getItem() instanceof FilterCount) {
+            if (stockerCardCache.regulate && filter.getItem() instanceof FilterCount) {
+                if (regulateGasStocker(stockerCardCache, adacentTank))
+                    return true;
+            }
+            if (!canAnyGasFiltersFit(adacentTank, stockerCardCache)) {
+                return false; //If we can't fit any of our filtered items into this inventory, don't bother scanning for them
+            }
+            boolean foundItems = findGasStackForStocker(stockerCardCache, adacentTank); //Start looking for this item
             if (foundItems)
                 return true;
 
@@ -1623,6 +1956,75 @@ public class LaserNodeBE extends BaseLaserBE {
                         FluidStack drainedStack = handler.drain(insertStack, IFluidHandler.FluidAction.EXECUTE);
                         stockerTank.fill(drainedStack, IFluidHandler.FluidAction.EXECUTE);
                         drawParticlesFluid(drainedStack, inserterCardCache.direction, inserterCardCache.be, stockerCardCache.be, stockerCardCache.direction, inserterCardCache.cardSlot, stockerCardCache.cardSlot);
+                    }
+                    return true;
+                }
+            }
+        }
+        return false; //If we got NOTHING
+    }
+
+    public boolean findGasStackForStocker(StockerCardCache stockerCardCache, IGasHandler stockerTank) {
+        boolean isCount = stockerCardCache.filterCard.getItem() instanceof FilterCount;
+        int extractAmt = stockerCardCache.extractAmt;
+
+        List<GasStack> filteredGasesList = new CopyOnWriteArrayList<>(stockerCardCache.getFilteredGases());
+        filteredGasesList.removeIf(gasStack -> !canGasFitInTank(stockerTank, gasStack));//If this gas can't fit in this tank at all, skip the gas
+        if (filteredGasesList.isEmpty()) //If nothing in the filter can fit, return false
+            return false;
+
+        if (isCount) { //If this is a filter count, prune the list of items to search for to just what we need
+            for (GasStack gasStack : filteredGasesList) { //Remove all the items from the list that we already have enough of
+                for (int tank = 0; tank < stockerTank.getTanks(); tank++) {
+                    GasStack tankStack = stockerTank.getChemicalInTank(tank);
+                    if (tankStack.isEmpty() || tankStack.isTypeEqual(gasStack)) {
+                        int filterAmt = stockerCardCache.getFilterAmt(gasStack);
+                        long amtHad = tankStack.getAmount();
+                        long amtNeeded = filterAmt - amtHad;
+                        if (amtNeeded <= 0) {//if we have enough, move onto the next stack after removing this one from the list
+                            filteredGasesList.remove(gasStack);
+                            continue;
+                        }
+                        gasStack.setAmount(Math.min(amtNeeded, extractAmt)); //Adjust the amount we need
+                    }
+                }
+            }
+        }
+
+        if (filteredGasesList.isEmpty()) //If we have nothing left to look for! Probably only happens when its a count card.
+            return false;
+
+
+        //At this point we should have a list of fluids that we need to satisfy the stock request
+        for (GasStack gasStack : filteredGasesList) {
+            Map<InserterCardCache, GasStack> insertHandlers = new HashMap<>();
+            if (!isCount)
+                gasStack.setAmount(extractAmt); //If this isn't a counting card, we want the extractAmt value
+            long amtNeeded = gasStack.getAmount();
+
+            for (InserterCardCache inserterCardCache : getChannelMatchInserters(stockerCardCache)) { //Iterate through ALL inserter nodes on this channel only
+                if (!inserterCardCache.isStackValidForCard(gasStack))
+                    continue;
+                LaserNodeGasHandler laserNodeGasHandler = getLaserNodeHandlerGas(inserterCardCache);
+                if (laserNodeGasHandler == null) continue;
+                gasStack.setAmount(amtNeeded);
+                IGasHandler handler = laserNodeGasHandler.handler();
+                GasStack extractStack = handler.extractChemical(gasStack, Action.SIMULATE);
+                if (extractStack.isEmpty()) continue;
+                insertHandlers.put(inserterCardCache, extractStack);
+                amtNeeded -= extractStack.getAmount();
+                if (amtNeeded == 0) break;
+            }
+            if (!insertHandlers.isEmpty()) {
+                if (!stockerCardCache.exact || amtNeeded == 0) { //If its not exact mode, or it is exact mode and we found all we need to satisfy this
+                    for (Map.Entry<InserterCardCache, GasStack> entry : insertHandlers.entrySet()) { //Do all the extracts/inserts
+                        InserterCardCache inserterCardCache = entry.getKey();
+                        GasStack insertStack = entry.getValue();
+                        LaserNodeGasHandler laserNodeGasHandler = getLaserNodeHandlerGas(inserterCardCache);
+                        IGasHandler handler = laserNodeGasHandler.handler;                       
+                        GasStack drainedStack = handler.extractChemical(insertStack, Action.EXECUTE);
+                        stockerTank.insertChemical(drainedStack, Action.EXECUTE);
+                        drawParticlesGas(drainedStack, inserterCardCache.direction, inserterCardCache.be, stockerCardCache.be, stockerCardCache.direction, inserterCardCache.cardSlot, stockerCardCache.cardSlot);
                     }
                     return true;
                 }
@@ -1834,7 +2236,7 @@ public class LaserNodeBE extends BaseLaserBE {
                 clientLevel.addParticle(data, fromPos.getX() + extractOffset.x() + d1, fromPos.getY() + extractOffset.y() + d3, fromPos.getZ() + extractOffset.z() + d5, 0, 0, 0);
             }
         }*/
-        if (particleRenderData.isEmpty() && particleRenderDataFluids.isEmpty()) return;
+        if (particleRenderData.isEmpty() && particleRenderDataFluids.isEmpty() && particleRenderDataGases.isEmpty()) return;
         ClientLevel clientLevel = (ClientLevel) level;
         //int particlesDrawnThisTick = 0;
         for (ParticleRenderData partData : particleRenderData) {
@@ -1920,7 +2322,45 @@ public class LaserNodeBE extends BaseLaserBE {
                 }
             }
         }
-        //System.out.println(particlesDrawnThisTick);
+        
+        for (ParticleRenderDataGas partData : particleRenderDataGases) {
+          GasStack gasStack = partData.gasStack;
+          BlockPos toPos = partData.toPos;
+          BlockPos fromPos = partData.fromPos;
+          Direction direction = Direction.values()[partData.direction];
+          BlockState targetState = level.getBlockState(toPos);
+          float randomSpread = 0.01f;
+          int min = 100;
+          int max = 8000;
+          int minPart = 8;
+          int maxPart = 64;
+          long count = ((maxPart - minPart) * (gasStack.getAmount() - min)) / (max - min) + minPart;
+
+          if (targetState.getBlock() instanceof LaserNode) {
+              targetState = level.getBlockState(fromPos);
+              VoxelShape voxelShape = targetState.getShape(level, toPos);
+              Vector3f extractOffset = findOffset(direction, partData.position, offsets);
+              Vector3f insertOffset = CardRender.shapeOffset(extractOffset, voxelShape, fromPos, toPos, direction, level, targetState);
+              GasFlowParticleData data = new GasFlowParticleData(gasStack, toPos.getX() + extractOffset.x(), toPos.getY() + extractOffset.y(), toPos.getZ() + extractOffset.z(), 10);
+              for (int i = 0; i < count; ++i) {
+                  double d1 = this.random.nextGaussian() * (double) randomSpread;
+                  double d3 = this.random.nextGaussian() * (double) randomSpread;
+                  double d5 = this.random.nextGaussian() * (double) randomSpread;
+                  clientLevel.addParticle(data, toPos.getX() + insertOffset.x() + d1, toPos.getY() + insertOffset.y() + d3, toPos.getZ() + insertOffset.z() + d5, 0, 0, 0);
+              }
+          } else {
+              VoxelShape voxelShape = targetState.getShape(level, toPos);
+              Vector3f extractOffset = findOffset(direction, partData.position, offsets);
+              Vector3f insertOffset = CardRender.shapeOffset(extractOffset, voxelShape, fromPos, toPos, direction, level, targetState);
+              GasFlowParticleData data = new GasFlowParticleData(gasStack, fromPos.getX() + insertOffset.x(), fromPos.getY() + insertOffset.y(), fromPos.getZ() + insertOffset.z(), 10);
+              for (int i = 0; i < count; ++i) {
+                  double d1 = this.random.nextGaussian() * (double) randomSpread;
+                  double d3 = this.random.nextGaussian() * (double) randomSpread;
+                  double d5 = this.random.nextGaussian() * (double) randomSpread;
+                  clientLevel.addParticle(data, fromPos.getX() + extractOffset.x() + d1, fromPos.getY() + extractOffset.y() + d3, fromPos.getZ() + extractOffset.z() + d5, 0, 0, 0);
+              }
+          }
+      }
     }
 
     /** Adds from the PacketNodeParticles a set of particles to draw next client tick **/
@@ -1932,6 +2372,10 @@ public class LaserNodeBE extends BaseLaserBE {
         this.particleRenderDataFluids.add(particleRenderData);
     }
 
+    public void addParticleDataGas(ParticleRenderDataGas particleRenderData) {
+      this.particleRenderDataGases.add(particleRenderData);
+  }
+
     /** Draw the particles between node and inventory **/
     public void drawParticles(ItemStack itemStack, Direction fromDirection, LaserNodeBE sourceBE, LaserNodeBE destinationBE, Direction destinationDirection, int extractPosition, int insertPosition) {
         drawParticles(itemStack, itemStack.getCount(), fromDirection, sourceBE, destinationBE, destinationDirection, extractPosition, insertPosition);
@@ -1941,6 +2385,10 @@ public class LaserNodeBE extends BaseLaserBE {
     public void drawParticlesFluid(FluidStack fluidStack, Direction fromDirection, LaserNodeBE sourceBE, LaserNodeBE destinationBE, Direction destinationDirection, int extractPosition, int insertPosition) {
         ServerTickHandler.addToListFluid(new ParticleDataFluid(fluidStack, sourceBE.getBlockPos(), (byte) fromDirection.ordinal(), destinationBE.getBlockPos(), (byte) destinationDirection.ordinal(), (byte) extractPosition, (byte) insertPosition), level);
     }
+
+    public void drawParticlesGas(GasStack gasStack, Direction fromDirection, LaserNodeBE sourceBE, LaserNodeBE destinationBE, Direction destinationDirection, int extractPosition, int insertPosition) {
+      ServerTickHandler.addToListGas(new ParticleDataGas(gasStack, sourceBE.getBlockPos(), (byte) fromDirection.ordinal(), destinationBE.getBlockPos(), (byte) destinationDirection.ordinal(), (byte) extractPosition, (byte) insertPosition), level);
+  }
 
     /** Draw the particles between node and inventory **/
     public void drawParticles(ItemStack itemStack, int amount, Direction fromDirection, LaserNodeBE sourceBE, LaserNodeBE destinationBE, Direction destinationDirection, int extractPosition, int insertPosition) {
@@ -1996,6 +2444,7 @@ public class LaserNodeBE extends BaseLaserBE {
         inserterNodes.clear();
         inserterCache.clear();
         inserterCacheFluid.clear();
+        inserterCacheGas.clear();
         channelOnlyCache.clear();
         this.stockerDestinationCache.clear();
         this.redstoneNetwork.clear();
@@ -2021,6 +2470,7 @@ public class LaserNodeBE extends BaseLaserBE {
         inserterNodes.removeIf(p -> p.relativePos.equals(relativePos));
         inserterCache.clear(); //TODO maybe just remove destinations that match this blockPos
         inserterCacheFluid.clear();
+        inserterCacheGas.clear();
         channelOnlyCache.clear();
         this.stockerDestinationCache.clear();
         if (be == null) return; //If the block position given doesn't contain a LaserNodeBE stop
@@ -2121,6 +2571,19 @@ public class LaserNodeBE extends BaseLaserBE {
         return new LaserNodeFluidHandler(be, handler);
     }
 
+    public LaserNodeGasHandler getLaserNodeHandlerGas(InserterCardCache inserterCardCache) {
+      if (!inserterCardCache.cardType.equals(BaseCard.CardType.GAS)) return null;
+      BlockPos nodeWorldPos = getWorldPos(inserterCardCache.relativePos);
+      if (!chunksLoaded(nodeWorldPos, nodeWorldPos.relative(inserterCardCache.direction))) return null;
+      LaserNodeBE be = getNodeAt(getWorldPos(inserterCardCache.relativePos));
+      if (be == null) return null;
+      LazyOptional<IGasHandler> gasHandler = be.getAttachedGasTank(inserterCardCache.direction, inserterCardCache.sneaky);
+      if (!gasHandler.isPresent()) return null;
+      IGasHandler handler = gasHandler.resolve().get();
+      if (handler.getTanks() == 0) return null;
+      return new LaserNodeGasHandler(be, handler);
+  }
+
     /** Somehow this makes it so if you break an adjacent chest it immediately invalidates the cache of it **/
     public LazyOptional<IFluidHandler> getAttachedFluidTank(Direction direction, Byte sneakySide) {
         Direction inventorySide = direction.getOpposite();
@@ -2168,6 +2631,53 @@ public class LaserNodeBE extends BaseLaserBE {
         }
         return LazyOptional.empty();
     }
+
+    public LazyOptional<IGasHandler> getAttachedGasTank(Direction direction, Byte sneakySide) {
+      Direction inventorySide = direction.getOpposite();
+      if (sneakySide != -1)
+          inventorySide = Direction.values()[sneakySide];
+      SideConnection sideConnection = new SideConnection(direction, inventorySide);
+      LazyOptional<IGasHandler> testHandler = (facingHandlerGas.get(sideConnection));
+      if (testHandler != null && testHandler.isPresent()) {
+          return testHandler;
+      }
+
+      // if no inventory cached yet, find a new one
+      assert level != null;
+      BlockEntity be = level.getBlockEntity(getBlockPos().relative(direction));
+      // if we have a TE and its an item handler, try extracting from that
+      if (be != null) {
+          LazyOptional<IGasHandler> handler = be.getCapability(Capabilities.GAS_HANDLER, inventorySide);
+          if (handler.isPresent()) {
+              // add the invalidator
+              handler.addListener(getInvalidatorGas(sideConnection));
+              // cache and return
+              facingHandlerGas.put(sideConnection, handler);
+              return handler;
+          }
+      }
+      // no item handler, cache empty
+      facingHandlerGas.remove(sideConnection);
+      return LazyOptional.empty();
+  }
+
+    public LazyOptional<IGasHandler> getAttachedGasTankNoCache(Direction direction, Byte sneakySide) {
+      Direction inventorySide = direction.getOpposite();
+      if (sneakySide != -1)
+          inventorySide = Direction.values()[sneakySide];
+
+      // if no inventory cached yet, find a new one
+      assert level != null;
+      BlockEntity be = level.getBlockEntity(getBlockPos().relative(direction));
+      // if we have a TE and its an item handler, try extracting from that
+      if (be != null) {
+          LazyOptional<IGasHandler> handler = be.getCapability(Capabilities.GAS_HANDLER, inventorySide);
+          if (handler.isPresent()) {
+              return handler;
+          }
+      }
+      return LazyOptional.empty();
+  }
 
     public LaserNodeEnergyHandler getLaserNodeHandlerEnergy(InserterCardCache inserterCardCache) {
         if (!inserterCardCache.cardType.equals(BaseCard.CardType.ENERGY)) return null;
@@ -2237,6 +2747,14 @@ public class LaserNodeBE extends BaseLaserBE {
         }));
     }
 
+    private NonNullConsumer<LazyOptional<IGasHandler>> getInvalidatorGas(SideConnection sideConnection) {
+      return connectionInvalidatorGas.computeIfAbsent(sideConnection, c -> new WeakConsumerWrapper<>(this, (te, handler) -> {
+          if (te.facingHandlerGas.get(sideConnection) == handler) {
+              te.clearCachedInventories(sideConnection);
+          }
+      }));
+  }
+
     private NonNullConsumer<LazyOptional<IEnergyStorage>> getInvalidatorEnergy(SideConnection sideConnection) {
         return connectionInvalidatorEnergy.computeIfAbsent(sideConnection, c -> new WeakConsumerWrapper<>(this, (te, handler) -> {
             if (te.facingHandlerEnergy.get(sideConnection) == handler) {
@@ -2244,7 +2762,6 @@ public class LaserNodeBE extends BaseLaserBE {
             }
         }));
     }
-
 
     /** Called when a neighbor updates to invalidate the inventory cache */
     public void clearCachedInventories(SideConnection sideConnection) {
@@ -2297,6 +2814,11 @@ public class LaserNodeBE extends BaseLaserBE {
                     cardRenders.add(new CardRender(direction, slot, card, getBlockPos(), level, enabled));
                 } else if (card.getItem() instanceof CardFluid) {
                     if (getAttachedFluidTankNoCache(direction, BaseCard.getSneaky(card)).equals(LazyOptional.empty()))
+                        continue;
+
+                    cardRenders.add(new CardRender(direction, slot, card, getBlockPos(), level, enabled));
+                } else if (card.getItem() instanceof CardGas) {
+                    if (getAttachedGasTankNoCache(direction, BaseCard.getSneaky(card)).equals(LazyOptional.empty()))
                         continue;
 
                     cardRenders.add(new CardRender(direction, slot, card, getBlockPos(), level, enabled));

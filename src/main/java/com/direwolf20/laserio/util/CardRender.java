@@ -47,7 +47,7 @@ public class CardRender {
             b = 1f;
         } else if (((BaseCard) card.getItem()).getCardType() == BaseCard.CardType.GAS) {
             r = 1f;
-            g = 0f;
+            g = 0.5f;
             b = 1f;
         } else if (((BaseCard) card.getItem()).getCardType() == BaseCard.CardType.ENERGY) {
             r = 1f;
