@@ -1,13 +1,25 @@
 package com.direwolf20.laserio.setup;
 
+import java.awt.Color;
+
 import com.direwolf20.laserio.client.blockentityrenders.LaserConnectorBERender;
 import com.direwolf20.laserio.client.blockentityrenders.LaserNodeBERender;
 import com.direwolf20.laserio.client.events.ClientEvents;
 import com.direwolf20.laserio.client.events.EventTooltip;
-import com.direwolf20.laserio.client.screens.*;
+import com.direwolf20.laserio.client.screens.CardEnergyScreen;
+import com.direwolf20.laserio.client.screens.CardFluidScreen;
+import com.direwolf20.laserio.client.screens.CardGasScreen;
+import com.direwolf20.laserio.client.screens.CardHolderScreen;
+import com.direwolf20.laserio.client.screens.CardItemScreen;
+import com.direwolf20.laserio.client.screens.CardRedstoneScreen;
+import com.direwolf20.laserio.client.screens.FilterBasicScreen;
+import com.direwolf20.laserio.client.screens.FilterCountScreen;
+import com.direwolf20.laserio.client.screens.FilterTagScreen;
+import com.direwolf20.laserio.client.screens.LaserNodeScreen;
 import com.direwolf20.laserio.common.LaserIO;
 import com.direwolf20.laserio.common.items.cards.BaseCard;
 import com.direwolf20.laserio.common.items.cards.CardRedstone;
+
 import net.minecraft.client.color.item.ItemColors;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
@@ -22,8 +34,6 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
-
-import java.awt.*;
 
 @Mod.EventBusSubscriber(modid = LaserIO.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ClientSetup {

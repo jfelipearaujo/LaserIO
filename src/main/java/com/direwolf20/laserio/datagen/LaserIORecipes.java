@@ -1,16 +1,22 @@
 package com.direwolf20.laserio.datagen;
 
+import java.util.function.Consumer;
+
 import com.direwolf20.laserio.datagen.customrecipes.CardClearRecipeBuilder;
 import com.direwolf20.laserio.setup.Registration;
+
+import mekanism.common.registries.MekanismItems;
 import net.minecraft.advancements.critereon.InventoryChangeTrigger;
 import net.minecraft.advancements.critereon.ItemPredicate;
 import net.minecraft.data.DataGenerator;
-import net.minecraft.data.recipes.*;
+import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.data.recipes.RecipeProvider;
+import net.minecraft.data.recipes.ShapedRecipeBuilder;
+import net.minecraft.data.recipes.ShapelessRecipeBuilder;
+import net.minecraft.data.recipes.SimpleCookingRecipeBuilder;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraftforge.common.Tags;
-
-import java.util.function.Consumer;
 
 public class LaserIORecipes extends RecipeProvider {
 
@@ -107,14 +113,13 @@ public class LaserIORecipes extends RecipeProvider {
                 .define('q', Tags.Items.GEMS_QUARTZ)
                 .group("laserio")
                 .unlockedBy("has_logic_chip", InventoryChangeTrigger.TriggerInstance.hasItems(Registration.Logic_Chip.get()))
-                .save(consumer);
-        // TODO: change recipe
+                .save(consumer);        
         ShapedRecipeBuilder.shaped(Registration.Card_Gas.get(), 1)
                 .pattern("rlr")
                 .pattern("qpq")
                 .pattern("ggg")
                 .define('r', Tags.Items.DUSTS_REDSTONE)
-                .define('p', Registration.Logic_Chip.get()) // TODO: how to load Mekanins tag items?
+                .define('p', MekanismItems.INFUSED_ALLOY.asItem())
                 .define('g', Tags.Items.NUGGETS_GOLD)
                 .define('l', Items.BUCKET)
                 .define('q', Tags.Items.GEMS_QUARTZ)

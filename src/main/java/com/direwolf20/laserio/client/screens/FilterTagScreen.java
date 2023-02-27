@@ -1,5 +1,12 @@
 package com.direwolf20.laserio.client.screens;
 
+import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Locale;
+import java.util.Optional;
+
 import com.direwolf20.laserio.client.renderer.LaserIOItemRenderer;
 import com.direwolf20.laserio.client.renderer.LaserIOItemRendererFluid;
 import com.direwolf20.laserio.client.renderer.LaserIOItemRendererGas;
@@ -18,12 +25,8 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 
-import mekanism.api.MekanismAPI;
-import mekanism.api.chemical.ChemicalUtils;
-import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.gas.IGasHandler;
-import mekanism.api.datagen.tag.ChemicalTagsProvider.GasTagsProvider;
 import mekanism.common.capabilities.Capabilities;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -45,10 +48,6 @@ import net.minecraftforge.fluids.FluidUtil;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 import net.minecraftforge.fluids.capability.IFluidHandlerItem;
 import net.minecraftforge.registries.ForgeRegistries;
-
-import java.awt.*;
-import java.util.List;
-import java.util.*;
 
 public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer> {
     private final ResourceLocation GUI = new ResourceLocation(LaserIO.MODID, "textures/gui/filtertag.png");
@@ -136,7 +135,10 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
                 IGasHandler gasHandler = gasHandlerLazyOptional.get();
                 for (int tank = 0; tank < gasHandler.getTanks(); tank++) {
                     GasStack gasStack = gasHandler.getChemicalInTank(tank);
-                    // TODO: handle gas tags
+                    var tag = gasStack.getRaw().getTranslationKey();
+                    if(!stackInSlotTags.contains(tag) && !tags.contains(tag)){
+                      stackInSlotTags.add(tag);
+                    }
                 }
             }
         }

@@ -1,5 +1,26 @@
 package com.direwolf20.laserio.common.blockentities;
 
+import static com.direwolf20.laserio.util.MiscTools.findOffset;
+import static net.minecraft.world.level.block.Block.UPDATE_ALL;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.stream.Collectors;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+
 import com.direwolf20.laserio.client.particles.fluidparticle.FluidFlowParticleData;
 import com.direwolf20.laserio.client.particles.gasparticle.GasFlowParticleData;
 import com.direwolf20.laserio.client.particles.itemparticle.ItemFlowParticleData;
@@ -7,15 +28,39 @@ import com.direwolf20.laserio.common.blockentities.basebe.BaseLaserBE;
 import com.direwolf20.laserio.common.blocks.LaserNode;
 import com.direwolf20.laserio.common.containers.LaserNodeContainer;
 import com.direwolf20.laserio.common.events.ServerTickHandler;
-import com.direwolf20.laserio.common.items.cards.*;
+import com.direwolf20.laserio.common.items.cards.BaseCard;
+import com.direwolf20.laserio.common.items.cards.CardEnergy;
+import com.direwolf20.laserio.common.items.cards.CardFluid;
+import com.direwolf20.laserio.common.items.cards.CardGas;
+import com.direwolf20.laserio.common.items.cards.CardItem;
+import com.direwolf20.laserio.common.items.cards.CardRedstone;
 import com.direwolf20.laserio.common.items.filters.FilterBasic;
 import com.direwolf20.laserio.common.items.filters.FilterCount;
 import com.direwolf20.laserio.common.items.filters.FilterMod;
 import com.direwolf20.laserio.common.items.filters.FilterTag;
 import com.direwolf20.laserio.common.items.upgrades.OverclockerNode;
 import com.direwolf20.laserio.setup.Registration;
-import com.direwolf20.laserio.util.*;
+import com.direwolf20.laserio.util.BaseCardCache;
+import com.direwolf20.laserio.util.CardRender;
+import com.direwolf20.laserio.util.ExtractorCardCache;
+import com.direwolf20.laserio.util.FluidStackKey;
+import com.direwolf20.laserio.util.GasStackKey;
+import com.direwolf20.laserio.util.InserterCardCache;
+import com.direwolf20.laserio.util.ItemHandlerUtil;
+import com.direwolf20.laserio.util.ItemStackKey;
+import com.direwolf20.laserio.util.NodeSideCache;
+import com.direwolf20.laserio.util.ParticleData;
+import com.direwolf20.laserio.util.ParticleDataFluid;
+import com.direwolf20.laserio.util.ParticleDataGas;
+import com.direwolf20.laserio.util.ParticleRenderData;
+import com.direwolf20.laserio.util.ParticleRenderDataFluid;
+import com.direwolf20.laserio.util.ParticleRenderDataGas;
+import com.direwolf20.laserio.util.SensorCardCache;
+import com.direwolf20.laserio.util.StockerCardCache;
+import com.direwolf20.laserio.util.TransferResult;
+import com.direwolf20.laserio.util.WeakConsumerWrapper;
 import com.mojang.math.Vector3f;
+
 import it.unimi.dsi.fastutil.bytes.Byte2BooleanMap;
 import it.unimi.dsi.fastutil.bytes.Byte2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.bytes.Byte2ByteMap;
@@ -23,7 +68,6 @@ import it.unimi.dsi.fastutil.bytes.Byte2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import mekanism.api.Action;
-import mekanism.api.chemical.ChemicalUtils;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.gas.IGasHandler;
 import mekanism.common.capabilities.Capabilities;
@@ -42,7 +86,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.CapabilityManager;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.common.util.NonNullConsumer;
 import net.minecraftforge.energy.CapabilityEnergy;
@@ -54,15 +97,6 @@ import net.minecraftforge.items.CapabilityItemHandler;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.items.ItemStackHandler;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.stream.Collectors;
-
-import static com.direwolf20.laserio.util.MiscTools.findOffset;
-import static net.minecraft.world.level.block.Block.UPDATE_ALL;
 
 public class LaserNodeBE extends BaseLaserBE {
     private static final Vector3f[] offsets = { //Used for where to draw particles from
@@ -938,7 +972,9 @@ public class LaserNodeBE extends BaseLaserBE {
     public boolean senseGases(SensorCardCache sensorCardCache) {
         BlockPos adjacentPos = getBlockPos().relative(sensorCardCache.direction);
         assert level != null;
-        if (!level.isLoaded(adjacentPos)) return false;
+        if (!level.isLoaded(adjacentPos)) 
+          return false;
+
         NodeSideCache nodeSideCache = nodeSideCaches[sensorCardCache.direction.ordinal()];
         Optional<IGasHandler> adjacentTankOptional = getAttachedGasTank(sensorCardCache.direction, sensorCardCache.sneaky).resolve();
         if (adjacentTankOptional.isEmpty()) { //Needs a filter
@@ -1010,7 +1046,25 @@ public class LaserNodeBE extends BaseLaserBE {
             else
                 filterMatched = filteredGases.size() < filteredGasesOriginal.size();
         } else if (filter.getItem() instanceof FilterTag) {
-            // TODO: implement FilterTag
+            List<String> tags = sensorCardCache.getFilterTags();
+            int tagsToMatch = tags.size();
+
+            outloop:
+            for (int tank = 0; tank < adacentTank.getTanks(); tank++) { // Loop through all the tanks
+                GasStack stackInTank = adacentTank.getChemicalInTank(tank);
+                String gasTag = stackInTank.getRaw().getTranslationKey();
+                if (tags.contains(gasTag)) {
+                    tags.remove(gasTag);
+                    if (!andMode) {
+                        break outloop;
+                    }
+                }
+            }
+            //In and mode, the list of tags needs to be empty, in or mode it just has to be 1 smaller.
+            if (andMode)
+                filterMatched = tags.size() == 0;
+            else
+                filterMatched = tags.size() < tagsToMatch;
         }
         if (updateRedstoneFromSensor(filterMatched, sensorCardCache.redstoneChannel, nodeSideCache)) {
             //System.out.println("Redstone network change detected");
@@ -1155,16 +1209,35 @@ public class LaserNodeBE extends BaseLaserBE {
 
         for (InserterCardCache inserterCardCache : inserterCardCaches) {
             LaserNodeGasHandler laserNodeGasHandler = getLaserNodeHandlerGas(inserterCardCache);
-            if (laserNodeGasHandler == null) continue;
+
+            if (laserNodeGasHandler == null) 
+              continue;
+
             IGasHandler handler = laserNodeGasHandler.handler;
-            //for (int tank = 0; tank < handler.getTanks(); tank++) {
+
+            boolean tankFull = false;
+            
+            for (int tank = 0; tank < handler.getTanks(); tank++) {
+              GasStack currentStack = handler.getChemicalInTank(tank);
+              long maxCapacity = handler.getTankCapacity(tank);
+              if (maxCapacity == currentStack.getAmount()){
+                tankFull = true;
+                break;
+              }
+            }
+
+            if (tankFull)
+              continue;            
+
             if (inserterCardCache.filterCard.getItem() instanceof FilterCount) {
                 int filterCount = inserterCardCache.getFilterAmt(extractStack);
+
                 for (int tank = 0; tank < handler.getTanks(); tank++) {
                     GasStack gasStack = handler.getChemicalInTank(tank);
                     if (gasStack.isEmpty() || gasStack.isTypeEqual(extractStack)) {
                         long currentAmt = gasStack.getAmount();
                         long neededAmt = filterCount - currentAmt;
+
                         if (neededAmt < extractStack.getAmount()) {
                             amtToExtract = neededAmt;
                             break;

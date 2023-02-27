@@ -1,11 +1,10 @@
 package com.direwolf20.laserio.util;
 
-import net.minecraft.nbt.CompoundTag;
-
 import java.util.Objects;
 
 import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
+import net.minecraft.nbt.CompoundTag;
 
 public class GasStackKey {
     public final Gas gas;

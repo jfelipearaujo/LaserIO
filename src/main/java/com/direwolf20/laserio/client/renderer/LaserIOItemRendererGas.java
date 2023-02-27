@@ -1,10 +1,19 @@
 package com.direwolf20.laserio.client.renderer;
 
+import java.util.Optional;
+
+import javax.annotation.Nullable;
+
 import com.direwolf20.laserio.client.screens.CardGasScreen;
 import com.direwolf20.laserio.common.items.filters.FilterCount;
 import com.direwolf20.laserio.util.MiscTools;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.*;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
@@ -27,9 +36,6 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import java.util.Optional;
-
-import javax.annotation.Nullable;
 
 /** This class is used to make the numbers on items in the FilterCountContainer smaller when greater than 100 **/
 public class LaserIOItemRendererGas extends ItemRenderer {
