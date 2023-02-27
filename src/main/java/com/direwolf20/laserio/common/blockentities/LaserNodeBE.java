@@ -68,6 +68,8 @@ import it.unimi.dsi.fastutil.bytes.Byte2ByteOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import mekanism.api.Action;
+import mekanism.api.chemical.ChemicalTags;
+import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.gas.IGasHandler;
 import mekanism.common.capabilities.Capabilities;
@@ -79,6 +81,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -1051,14 +1054,16 @@ public class LaserNodeBE extends BaseLaserBE {
 
             outloop:
             for (int tank = 0; tank < adacentTank.getTanks(); tank++) { // Loop through all the tanks
-                GasStack stackInTank = adacentTank.getChemicalInTank(tank);
-                String gasTag = stackInTank.getRaw().getTranslationKey();
-                if (tags.contains(gasTag)) {
-                    tags.remove(gasTag);
-                    if (!andMode) {
-                        break outloop;
-                    }
-                }
+              GasStack stackInTank = adacentTank.getChemicalInTank(tank);
+              ResourceLocation registryName = stackInTank.getTypeRegistryName();
+              TagKey<Gas> tagKey = ChemicalTags.GAS.tag(registryName);
+              String gasTag = tagKey.location().toString().toLowerCase(Locale.ROOT);
+              if (tags.contains(gasTag)) {
+                  tags.remove(gasTag);
+                  if (!andMode) {
+                      break outloop;
+                  }
+              }              
             }
             //In and mode, the list of tags needs to be empty, in or mode it just has to be 1 smaller.
             if (andMode)

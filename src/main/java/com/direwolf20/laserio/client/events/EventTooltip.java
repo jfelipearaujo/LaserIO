@@ -1,7 +1,9 @@
 package com.direwolf20.laserio.client.events;
 
+import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 import org.lwjgl.opengl.GL11;
 
@@ -14,6 +16,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 
 import mekanism.api.MekanismAPI;
 import mekanism.api.chemical.ChemicalTags;
+import mekanism.api.chemical.ChemicalUtils;
 import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.common.Mekanism;
@@ -27,6 +30,7 @@ import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -182,18 +186,21 @@ public class EventTooltip {
             matrices.popPose();
         }
 
-        // TODO: render tag stack
-        List<Gas> tagGases = MekanismAPI.gasRegistry().tags().getTag(ChemicalTags.GAS.tag(Mekanism.rl(tag))).stream().toList();
-        if (tagGases.size() > 0) {
-            GasStack drawGasStack = new GasStack(tagGases.get((int) (mc.level.getGameTime() / 20) % tagGases.size()), 1000);
-            matrices.pushPose();
-            if (!drawGasStack.isEmpty()) {                
-                ItemLike tank = MekanismBlocks.BASIC_CHEMICAL_TANK.asItem();
-                ItemStack tankStack = new ItemStack(tank, 1);
-                tooltipItemRenderer.renderGuiItem(8f, tankStack, x, y, itemRenderer.getModel(tankStack, null, null, 0));
-            }
-            matrices.popPose();
-        }
+        var tagManager = ChemicalTags.GAS.getManager().get();
+        var tagGasKey = tagManager.createTagKey(new ResourceLocation(tag));
+        var tagGas = tagManager.getTag(tagGasKey);        
+        String tagName = tagGas.getKey().location().toString().toLowerCase(Locale.ROOT);
+        if(tagName.equals(tag)){        
+          Gas gas = Gas.getFromRegistry(new ResourceLocation(tagName));
+          GasStack drawGasStack = new GasStack(gas, 1000);
+          matrices.pushPose();
+          if(!drawGasStack.isEmpty()) {
+            ItemLike tank = MekanismBlocks.BASIC_CHEMICAL_TANK.asItem();
+            ItemStack tankStack = new ItemStack(tank, 1);
+            tooltipItemRenderer.renderGuiItem(8f, tankStack, x, y, itemRenderer.getModel(tankStack, null, null, 0));
+          }
+          matrices.popPose();
+      }
     }
 }
 

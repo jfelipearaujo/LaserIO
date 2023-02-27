@@ -11,11 +11,10 @@ public class GasStackKey {
     public final CompoundTag nbt;
     private final int hash;
 
-
     public GasStackKey(GasStack stack, boolean compareNBT) {
-        this.gas = stack.getType();
-        this.nbt = new CompoundTag(); // TODO: Need load NBT from gases correctly
-        this.hash = Objects.hash(gas, nbt);
+      this.gas = stack.getType();
+      this.nbt = compareNBT ? stack.getRaw().write(new CompoundTag()): new CompoundTag();
+      this.hash = Objects.hash(gas, nbt);
     }
 
     public GasStack getStack() {

@@ -25,20 +25,30 @@ import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 
+import cpw.mods.modlauncher.api.ITransformationService.Resource;
+import mekanism.api.MekanismAPI;
+import mekanism.api.chemical.ChemicalTags;
+import mekanism.api.chemical.ChemicalUtils;
+import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.gas.IGasHandler;
+import mekanism.api.datagen.tag.ChemicalTagsProvider;
+import mekanism.common.Mekanism;
 import mekanism.common.capabilities.Capabilities;
+import mekanism.common.registries.MekanismBlocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -135,7 +145,9 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
                 IGasHandler gasHandler = gasHandlerLazyOptional.get();
                 for (int tank = 0; tank < gasHandler.getTanks(); tank++) {
                     GasStack gasStack = gasHandler.getChemicalInTank(tank);
-                    var tag = gasStack.getRaw().getTranslationKey();
+                    ResourceLocation registryName = gasStack.getTypeRegistryName();
+                    TagKey<Gas> tagKey = ChemicalTags.GAS.tag(registryName);
+                    String tag = tagKey.location().toString().toLowerCase(Locale.ROOT);
                     if(!stackInSlotTags.contains(tag) && !tags.contains(tag)){
                       stackInSlotTags.add(tag);
                     }
@@ -194,19 +206,22 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
                 matrixStack.popPose();
             }
 
-            // TODO: handle gases 'buckets'
-            // List<Gas> tagGases = MekanismAPI.gasRegistry().tags().getTag().stream().toList();
-            // GasStack drawGasStack = GasStack.EMPTY;
-            // if (tagGases.size() > 0) {
-            //     drawGasStack = new GasStack(tagGases.get((cycleRenders / 120) % tagGases.size()), 1000);
-            //     matrixStack.pushPose();
-            //     if (!drawGasStack.isEmpty()) {                    
-            //         bucketStack = new ItemStack(drawGasStack.get , 1);
-            //         if (!bucketStack.isEmpty())
-            //             tagItemRenderer.renderGuiItem(8f, bucketStack, (availableItemsstartX) - 4, (tagStartY) - 5, itemRenderer.getModel(bucketStack, null, null, 0));                    
-            //     }
-            //     matrixStack.popPose();
-            // }
+            var tagManager = ChemicalTags.GAS.getManager().get();
+            var tagGasKey = tagManager.createTagKey(new ResourceLocation(tag));
+            var tagGas = tagManager.getTag(tagGasKey);        
+            String tagName = tagGas.getKey().location().toString().toLowerCase(Locale.ROOT);
+            if (tagName.equals(tag)) {
+              Gas gas = Gas.getFromRegistry(new ResourceLocation(tagName));
+              GasStack drawGasStack = new GasStack(gas, 1000);
+              matrixStack.pushPose();
+              if (!drawGasStack.isEmpty()) {                    
+                var tankItemStack = MekanismBlocks.BASIC_CHEMICAL_TANK.getItemStack();
+                tankItemStack.setCount(1);
+                tankItemStack.setTag(gas.write(new CompoundTag()));
+                tagItemRenderer.renderGuiItem(8f, tankItemStack, (availableItemsstartX) - 4, (tagStartY) - 5, itemRenderer.getModel(tankItemStack, null, null, 0));                    
+              }
+              matrixStack.popPose();
+            }
 
             matrixStack.pushPose();
             matrixStack.scale(0.75f, 0.75f, 0.75f);

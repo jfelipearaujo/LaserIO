@@ -20,10 +20,13 @@ import com.direwolf20.laserio.common.items.filters.FilterTag;
 
 import it.unimi.dsi.fastutil.objects.Object2BooleanOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import mekanism.api.chemical.ChemicalTags;
+import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.gas.IGasHandler;
 import mekanism.common.capabilities.Capabilities;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fluids.FluidStack;
@@ -348,9 +351,20 @@ public class BaseCardCache {
         return filterCacheGas.get(key);
 
       if (filterCard.getItem() instanceof FilterMod) {
-          //TODO: Handle mod filtering
+        for (GasStack stack : filteredGases) {
+          if (stack.getTypeRegistryName().compareTo(testStack.getTypeRegistryName()) == 0) {
+              filterCacheGas.put(key, isAllowList);
+              return isAllowList;
+          }
+        }
       } else if (filterCard.getItem() instanceof FilterTag) {
-         //TODO: Handle tag filtering
+        ResourceLocation registryName = testStack.getTypeRegistryName();
+        TagKey<Gas> tagKey = ChemicalTags.GAS.tag(registryName);
+        String tag = tagKey.location().toString().toLowerCase(Locale.ROOT);
+        if (filterTags.contains(tag)) {
+            filterCacheGas.put(key, isAllowList);
+            return isAllowList;
+        }        
       } else {
           for (GasStack stack : filteredGases) {
               if (key.equals(new GasStackKey(stack, isCompareNBT))) {
