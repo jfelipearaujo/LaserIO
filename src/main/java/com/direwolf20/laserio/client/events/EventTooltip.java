@@ -1,6 +1,5 @@
 package com.direwolf20.laserio.client.events;
 
-import java.lang.reflect.Array;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -14,12 +13,9 @@ import com.direwolf20.laserio.common.items.filters.FilterTag;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 
-import mekanism.api.MekanismAPI;
 import mekanism.api.chemical.ChemicalTags;
-import mekanism.api.chemical.ChemicalUtils;
 import mekanism.api.chemical.gas.Gas;
 import mekanism.api.chemical.gas.GasStack;
-import mekanism.common.Mekanism;
 import mekanism.common.registries.MekanismBlocks;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -30,7 +26,6 @@ import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
-import net.minecraft.tags.TagKey;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
