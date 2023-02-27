@@ -172,8 +172,13 @@ repositories {
         url 'https://maven.blamejared.com'
     }
 
-    maven { url = 'https://modmaven.dev/' } // mek
-    maven { url = "https://www.cursemaven.com" } // curse mods
+    maven { //Mekanism
+      url = 'https://modmaven.dev/' 
+    } 
+    
+    maven { // curse mods
+      url = "https://www.cursemaven.com"
+    } 
 }
 
 dependencies {
@@ -190,8 +195,6 @@ dependencies {
     // Examples using mod jars from ./libs
     // implementation fg.deobf("blank:coolmod-${mc_version}:${coolmod_version}")
 
-    compileOnly "mekanism:Mekanism:${mekanism_version}:api"
-
     //JEI
     // compile against the JEI API but do not include it at runtime
     compileOnly fg.deobf("mezz.jei:jei-1.19.2-common-api:${jei_version}")
@@ -203,8 +206,11 @@ dependencies {
     compileOnly fg.deobf("vazkii.patchouli:Patchouli:${patchouli_version}:api")
     runtimeOnly fg.deobf("vazkii.patchouli:Patchouli:${patchouli_version}")
 
-    //Other mods for dev environment
+    //Mekanism
+    compileOnly "mekanism:Mekanism:${mekanism_version}:api"
     runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version}")
+
+    //Other mods for dev environment
     runtimeOnly fg.deobf("curse.maven:charging-gadgets-399757:3955867")
     /*runtimeOnly fg.deobf("curse.maven:functional-storage-556861:3794763")
     runtimeOnly fg.deobf("curse.maven:titanium-287342:3819942")

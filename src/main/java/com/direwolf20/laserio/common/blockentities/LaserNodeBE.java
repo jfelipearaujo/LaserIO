@@ -1260,8 +1260,11 @@ public class LaserNodeBE extends BaseLaserBE {
             if (drainedStack.isEmpty()) 
               continue; //If we didn't get anything for whatever reason
 
-            foundAnything = true;
-            handler.insertChemical(extractStack, Action.EXECUTE);
+            foundAnything = true;            
+            GasStack insertedStack = handler.insertChemical(extractStack, Action.EXECUTE);
+            if (!insertedStack.isEmpty())
+              continue; // Must be empty = this means the entire stack was accepted
+
             drawParticlesGas(extractStack, extractorCardCache.direction, extractorCardCache.be, inserterCardCache.be, inserterCardCache.direction, extractorCardCache.cardSlot, inserterCardCache.cardSlot);
             totalAmtNeeded -= extractStack.getAmount();
             amtToExtract = totalAmtNeeded;
