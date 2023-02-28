@@ -207,8 +207,8 @@ dependencies {
     runtimeOnly fg.deobf("vazkii.patchouli:Patchouli:${patchouli_version}")
 
     //Mekanism
-    compileOnly "mekanism:Mekanism:${mekanism_version}:api"
-    runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version}")
+    compileOnly fg.deobf("mekanism:Mekanism:${mekanism_version}")
+    //runtimeOnly fg.deobf("mekanism:Mekanism:${mekanism_version}")// core
 
     //Other mods for dev environment
     runtimeOnly fg.deobf("curse.maven:charging-gadgets-399757:3955867")

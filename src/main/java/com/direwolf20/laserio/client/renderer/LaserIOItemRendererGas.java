@@ -5,6 +5,7 @@ import java.util.Optional;
 import javax.annotation.Nullable;
 
 import com.direwolf20.laserio.client.screens.CardGasScreen;
+import com.direwolf20.laserio.common.addons.mekanism.MekanismCapabilities;
 import com.direwolf20.laserio.common.items.filters.FilterCount;
 import com.direwolf20.laserio.util.MiscTools;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -216,7 +217,7 @@ public class LaserIOItemRendererGas extends ItemRenderer {
                 return reverseBounds;
             }
         }
-        Optional<IGasHandler> gasHandlerLazyOptional = pStack.getCapability(Capabilities.GAS_HANDLER).resolve();
+        Optional<IGasHandler> gasHandlerLazyOptional = pStack.getCapability(MekanismCapabilities.GAS_HANDLER).resolve();
         if (!gasHandlerLazyOptional.isPresent()) {
             return reverseBounds;
         }
@@ -283,7 +284,7 @@ public class LaserIOItemRendererGas extends ItemRenderer {
             super.renderGuiItem(pStack, pX, pY, pBakedmodel);
             return;
         }
-        Optional<IGasHandler> gasHandlerLazyOptional = pStack.getCapability(Capabilities.GAS_HANDLER).resolve();
+        Optional<IGasHandler> gasHandlerLazyOptional = pStack.getCapability(MekanismCapabilities.GAS_HANDLER).resolve();
         GasStack gasStack = GasStack.EMPTY;
         IGasHandler gasHandler = gasHandlerLazyOptional.get();
         for (int tank = 0; tank < gasHandler.getTanks(); tank++) {

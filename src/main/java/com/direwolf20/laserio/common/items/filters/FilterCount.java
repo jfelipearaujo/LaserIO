@@ -2,6 +2,7 @@ package com.direwolf20.laserio.common.items.filters;
 
 import java.util.Optional;
 
+import com.direwolf20.laserio.common.addons.mekanism.MekanismCapabilities;
 import com.direwolf20.laserio.common.containers.FilterCountContainer;
 import com.direwolf20.laserio.common.containers.customhandler.FilterCountHandler;
 
@@ -193,7 +194,7 @@ public class FilterCount extends BaseFilter {
     }
 
     public static boolean doesItemStackHoldGases(ItemStack stack) {
-      Optional<IGasHandler> gasHandlerLazyOptional = stack.getCapability(Capabilities.GAS_HANDLER).resolve();
+      Optional<IGasHandler> gasHandlerLazyOptional = stack.getCapability(MekanismCapabilities.GAS_HANDLER).resolve();
       if (!gasHandlerLazyOptional.isPresent()) {
           return false;
       }

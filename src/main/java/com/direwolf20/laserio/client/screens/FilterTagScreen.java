@@ -13,6 +13,7 @@ import com.direwolf20.laserio.client.renderer.LaserIOItemRendererGas;
 import com.direwolf20.laserio.client.screens.widgets.IconButton;
 import com.direwolf20.laserio.client.screens.widgets.ToggleButton;
 import com.direwolf20.laserio.common.LaserIO;
+import com.direwolf20.laserio.common.addons.mekanism.MekanismCapabilities;
 import com.direwolf20.laserio.common.containers.FilterTagContainer;
 import com.direwolf20.laserio.common.containers.customslot.FilterBasicSlot;
 import com.direwolf20.laserio.common.items.filters.FilterTag;
@@ -135,7 +136,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
                 }
             }
 
-            Optional<IGasHandler> gasHandlerLazyOptional = stackInSlot.getCapability(Capabilities.GAS_HANDLER).resolve();
+            Optional<IGasHandler> gasHandlerLazyOptional = stackInSlot.getCapability(MekanismCapabilities.GAS_HANDLER).resolve();
             if (gasHandlerLazyOptional.isPresent()) {
                 IGasHandler gasHandler = gasHandlerLazyOptional.get();
                 for (int tank = 0; tank < gasHandler.getTanks(); tank++) {

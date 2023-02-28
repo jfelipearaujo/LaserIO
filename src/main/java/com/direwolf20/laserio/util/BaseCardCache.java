@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
+import com.direwolf20.laserio.common.addons.mekanism.MekanismCapabilities;
 import com.direwolf20.laserio.common.blockentities.LaserNodeBE;
 import com.direwolf20.laserio.common.items.cards.BaseCard;
 import com.direwolf20.laserio.common.items.cards.CardEnergy;
@@ -186,7 +187,7 @@ public class BaseCardCache {
       for (int i = 0; i < filterSlotHandler.getSlots(); i++) { //Gotta iterate the card's NBT because of the way we store amounts (in the MBAmt tag)
           ItemStack itemStack = filterSlotHandler.getStackInSlot(i);
           if (!itemStack.isEmpty()) {
-              Optional<IGasHandler> gasHandlerLazyOptional = itemStack.getCapability(Capabilities.GAS_HANDLER).resolve();
+              Optional<IGasHandler> gasHandlerLazyOptional = itemStack.getCapability(MekanismCapabilities.GAS_HANDLER).resolve();
               if (gasHandlerLazyOptional.isEmpty()) 
                 continue;
               IGasHandler gasHandler = gasHandlerLazyOptional.get();
@@ -255,7 +256,7 @@ public class BaseCardCache {
           ItemStack itemStack = filterSlotHandler.getStackInSlot(i);
 
           if (!itemStack.isEmpty()) {
-              Optional<IGasHandler> gasHandlerLazyOptional =  itemStack.getCapability(Capabilities.GAS_HANDLER).resolve();
+              Optional<IGasHandler> gasHandlerLazyOptional =  itemStack.getCapability(MekanismCapabilities.GAS_HANDLER).resolve();
               
               if (gasHandlerLazyOptional.isEmpty()) 
                 continue;

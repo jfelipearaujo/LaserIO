@@ -24,6 +24,7 @@ import javax.annotation.Nullable;
 import com.direwolf20.laserio.client.particles.fluidparticle.FluidFlowParticleData;
 import com.direwolf20.laserio.client.particles.gasparticle.GasFlowParticleData;
 import com.direwolf20.laserio.client.particles.itemparticle.ItemFlowParticleData;
+import com.direwolf20.laserio.common.addons.mekanism.MekanismCapabilities;
 import com.direwolf20.laserio.common.blockentities.basebe.BaseLaserBE;
 import com.direwolf20.laserio.common.blocks.LaserNode;
 import com.direwolf20.laserio.common.containers.LaserNodeContainer;
@@ -2728,7 +2729,7 @@ public class LaserNodeBE extends BaseLaserBE {
       BlockEntity be = level.getBlockEntity(getBlockPos().relative(direction));
       // if we have a TE and its an item handler, try extracting from that
       if (be != null) {
-          LazyOptional<IGasHandler> handler = be.getCapability(Capabilities.GAS_HANDLER, inventorySide);
+          LazyOptional<IGasHandler> handler = be.getCapability(MekanismCapabilities.GAS_HANDLER, inventorySide);
           if (handler.isPresent()) {
               // add the invalidator
               handler.addListener(getInvalidatorGas(sideConnection));
@@ -2752,7 +2753,7 @@ public class LaserNodeBE extends BaseLaserBE {
       BlockEntity be = level.getBlockEntity(getBlockPos().relative(direction));
       // if we have a TE and its an item handler, try extracting from that
       if (be != null) {
-          LazyOptional<IGasHandler> handler = be.getCapability(Capabilities.GAS_HANDLER, inventorySide);
+          LazyOptional<IGasHandler> handler = be.getCapability(MekanismCapabilities.GAS_HANDLER, inventorySide);
           if (handler.isPresent()) {
               return handler;
           }
