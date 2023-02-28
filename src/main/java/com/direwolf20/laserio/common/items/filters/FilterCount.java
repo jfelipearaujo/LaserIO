@@ -8,7 +8,6 @@ import com.direwolf20.laserio.common.containers.customhandler.FilterCountHandler
 
 import mekanism.api.chemical.gas.GasStack;
 import mekanism.api.chemical.gas.IGasHandler;
-import mekanism.common.capabilities.Capabilities;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
