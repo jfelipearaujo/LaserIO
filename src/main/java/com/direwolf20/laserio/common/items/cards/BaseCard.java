@@ -3,7 +3,6 @@ package com.direwolf20.laserio.common.items.cards;
 import com.direwolf20.laserio.client.blockentityrenders.LaserNodeBERender;
 import com.direwolf20.laserio.common.containers.CardItemContainer;
 import com.direwolf20.laserio.common.containers.customhandler.CardItemHandler;
-import com.direwolf20.laserio.setup.ModSetup;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
@@ -44,7 +43,7 @@ public class BaseCard extends Item {
     }
 
     public BaseCard() {
-        super(new Item.Properties().tab(ModSetup.ITEM_GROUP)
+        super(new Item.Properties()
                 .stacksTo(1));
 
     }
@@ -119,6 +118,18 @@ public class BaseCard extends Item {
         return nonnulllist;
     }
 
+
+    /**
+     * If you override hasCraftingRemainingItem you MUST override this as well
+     * Note: The real logic happens above in getContainerItems(Itemstack)
+     * This is only here to deal with autocrafters who might crash
+     */
+    @Override
+    public ItemStack getCraftingRemainingItem(ItemStack itemStack)
+    {
+        return ItemStack.EMPTY;
+    }
+
     /**
      * ItemStack sensitive version of hasContainerItem
      *
@@ -127,7 +138,7 @@ public class BaseCard extends Item {
      */
     @Override
     public boolean hasCraftingRemainingItem(ItemStack stack) {
-        return !(getInventory(stack).getStackInSlot(0).equals(ItemStack.EMPTY) && getInventory(stack).getStackInSlot(1).equals(ItemStack.EMPTY));
+        return !(getInventory(stack).getStackInSlot(0).isEmpty() && getInventory(stack).getStackInSlot(1).isEmpty());
     }
 
     public static CardItemHandler getInventory(ItemStack stack) {
