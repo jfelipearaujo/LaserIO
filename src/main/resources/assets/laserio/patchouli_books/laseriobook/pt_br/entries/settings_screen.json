@@ -1,0 +1,37 @@
+{
+  "name": "Configurações da Rede",
+  "icon": "laserio:textures/gui/buttons/settings.png",
+  "sortnum": 1,
+  "category": "laserio:mechanics",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "A tela para configurar a rede está disponível de qualquer $(l:laserio:laser_node)Nós a Laser$(/l). Nessa tela de configuração, você pode mudar a cor da rede. Esta cor afetará:$(li)Bloco do Nó a Laser (no mundo)$(li)Conector a Laser (no mundo)$(li)A cor dos lasers entre os blocos."
+    },
+    {
+      "type": "patchouli:image",
+      "title": "Nós Coloridos",
+      "images": [
+        "laserio:textures/book/entries/settings1.png"
+      ],
+      "border": true,
+      "text": "Redes com cores diferentes"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "A cor dos lasers entre o nó e os inventários (como baús ou tanques) não será afetada.$(br2)Fazer uma alteração em um nó em uma rede será automaticamente propagado para todos os outros nós na mesma rede. Desta forma, você pode ter redes de cores diferentes ao redor do seu mundo!$(br2)Isso é puramente cosmético e não tem efeito prático na funcionalidade."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Ao adicionar um nó ou rede a outra rede, as seguintes regras se aplicam:$(br2)Se um dos nós/redes tiver uma configuração de cor e o outro for padrão, o padrão sempre será substituído.$(br2)Caso contrário, o bloco destacado enviará suas configurações para quando você clicar em conectá-lo. Por exemplo, se você clicar com a tecla Shift pressionada em um nó verde e depois clicar em um nó azul, o nó azul ficará verde."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Existem duas configurações para Transparência, Transparência e Transparência com a Chave.$(br2)Transparência afeta apenas o laser que passa entre dois blocos e determina a transparência desse laser. Se definido como 0, você não verá os lasers entre os nós/conectores.$(br2)Transparência com a Chave ADICIONARÁ esta configuração à transparência quando o jogador estiver segurando a Chave a Laser."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Por exemplo, se você definir a Transparência como 0 e Transparência com a Chave como 80, você só verá os lasers ao segurar uma Chave a Laser!$(br2)Se você definir a Transparência como 80 e a Transparência com a Chave como 200, você verá o lasers com mais brilho enquanto segura a Chave a Laser. Não há mal nenhum em ultrapassar 255 ao somar os dois números, ele se limitará automaticamente a 255."
+    }
+  ]
+}

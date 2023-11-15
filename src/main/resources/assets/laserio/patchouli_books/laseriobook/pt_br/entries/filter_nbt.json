@@ -1,0 +1,29 @@
+{
+  "name": "Filtro de NBT",
+  "sortnum": 3,
+  "category": "laserio:filters",
+  "icon": "laserio:filter_nbt",
+  "pages": [
+    {
+      "type": "patchouli:text",
+      "text": "O Filtro de NBT tem uma interface de usuário e funcionalidade muito semelhantes às do $(l:laserio:filter_tag)Filtro de Tags$(/l).$(br2)Colocar um item no slot superior direito mostrará todos os rótulos de tags NBT nesse item. Adicioná-los à lista (da mesma forma que você faz com o filtro de tags) filtrará os itens que contêm essas tags, independentemente dos valores atribuídos a essas tags."
+    },
+    {
+      "type": "patchouli:image",
+      "title": "NBT UI",
+      "images": [
+        "laserio:textures/book/entries/nbt_filter.png"
+      ],
+      "border": true,
+      "text": "NBT UI"
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Por exemplo, todos os itens encantados têm uma tag 'Encantamentos', que especifica coisas como Saque, Afiado, etc. Se você adicionar a tag 'encantamentos' a esta lista, o filtro filtrará todos os itens encantados.$(br2)Espadas encantadas pode ir para um inventário e não encantado para outro. Independentemente de quais encantamentos são aplicados."
+    },
+    {
+      "type": "patchouli:text",
+      "text": "Todas as outras funcionalidades são idênticas ao $(l:laserio:filter_tag)Filtro de Tags$(/l), veja esse tópico para mais informações."
+    }
+  ]
+}
