@@ -2,11 +2,8 @@ package com.direwolf20.laserio.common.items.filters;
 
 import com.direwolf20.laserio.common.containers.FilterCountContainer;
 import com.direwolf20.laserio.common.containers.customhandler.FilterCountHandler;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
+import com.direwolf20.laserio.setup.LaserIODataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -14,12 +11,15 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandlerItem;
-import net.minecraftforge.network.NetworkHooks;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 
 public class FilterCount extends BaseFilter {
     public FilterCount() {
@@ -31,107 +31,106 @@ public class FilterCount extends BaseFilter {
         ItemStack itemstack = player.getItemInHand(hand);
         if (level.isClientSide()) return new InteractionResultHolder<>(InteractionResult.PASS, itemstack);
 
-        NetworkHooks.openScreen((ServerPlayer) player, new SimpleMenuProvider(
+        player.openMenu(new SimpleMenuProvider(
                 (windowId, playerInventory, playerEntity) -> new FilterCountContainer(windowId, playerInventory, player, itemstack), Component.translatable("")), (buf -> {
-            buf.writeItem(itemstack);
-            buf.writeItem(ItemStack.EMPTY);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, itemstack);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, ItemStack.EMPTY);
         }));
 
         return new InteractionResultHolder<>(InteractionResult.PASS, itemstack);
     }
 
+    /** Get MB for fluids - should be less than 1000 **/
     public static int getSlotAmount(ItemStack stack, int getSlot) {
-        CompoundTag compound = stack.getOrCreateTag();
-        /**Get MB for fluids - should be less than 1000**/
-        ListTag countList = compound.getList("counts", Tag.TAG_COMPOUND);
-        for (int i = 0; i < countList.size(); i++) {
-            CompoundTag countTag = countList.getCompound(i);
-            int slot = countTag.getInt("Slot");
-            if (slot == getSlot)
-                return countTag.getInt("MBAmount");
-        }
-        return 0;
+        if (!stack.has(LaserIODataComponents.FILTER_COUNT_MBAMT))
+            return 0; //If we don't have the data, it must be zero, as it was never set
+        List<Integer> slotAmts = stack.get(LaserIODataComponents.FILTER_COUNT_MBAMT);
+        return slotAmts.get(getSlot);
     }
 
     public static void setSlotAmount(ItemStack stack, int getSlot, int setMBAmount) {
-        CompoundTag compound = stack.getOrCreateTag();
-        /**Special handling for slots with > 127 items in them**/
-        ListTag countList = compound.getList("counts", Tag.TAG_COMPOUND);
-        for (int i = 0; i < countList.size(); i++) {
-            CompoundTag countTag = countList.getCompound(i);
-            int slot = countTag.getInt("Slot");
-            if (slot == getSlot) {
-                countTag.putInt("MBAmount", setMBAmount);
-                if (setMBAmount == 0)
-                    countTag.putInt("Count", 0);
-                else
-                    countTag.putInt("Count", Math.max(1, (int) Math.floor(setMBAmount / 1000)));
+        if (!stack.has(LaserIODataComponents.FILTER_COUNT_MBAMT)) {
+            List<Integer> list = new ArrayList<>(FilterCountContainer.SLOTS);
+            for (int i = 0; i < FilterCountContainer.SLOTS; i++) {
+                list.add(0); //Prefill with a list of size 0
+            }
+            stack.set(LaserIODataComponents.FILTER_COUNT_MBAMT, list);
+        }
+        List<Integer> slotAmts = stack.get(LaserIODataComponents.FILTER_COUNT_MBAMT);
+        int amtToPut = setMBAmount % 1000;
+        int stackSize = setMBAmount / 1000;
+        setSlotCount(stack, getSlot, stackSize);
+        slotAmts.set(getSlot, amtToPut);
+
+        //Now check if they are all zeros, and remove if so
+        boolean allZeros = true;
+        for (int i = 0; i < FilterCountContainer.SLOTS; i++) {
+            if (slotAmts.get(i) != 0) {
+                allZeros = false;
+                break;
             }
         }
+        if (allZeros)
+            stack.remove(LaserIODataComponents.FILTER_COUNT_MBAMT);
+        else
+            stack.set(LaserIODataComponents.FILTER_COUNT_MBAMT, slotAmts);
     }
 
+    /**Special handling for slots with > 127 items in them**/
     public static int getSlotCount(ItemStack stack, int getSlot) {
-        CompoundTag compound = stack.getOrCreateTag();
-        /**Special handling for slots with > 127 items in them**/
-        ListTag countList = compound.getList("counts", Tag.TAG_COMPOUND);
-        for (int i = 0; i < countList.size(); i++) {
-            CompoundTag countTag = countList.getCompound(i);
-            int slot = countTag.getInt("Slot");
-            if (slot == getSlot)
-                return countTag.getInt("Count");
-        }
-        return 0;
+        if (!stack.has(LaserIODataComponents.FILTER_COUNT_SLOT_COUNTS))
+            return 0; //If we don't have the data, it must be zero, as it was never set
+        List<Integer> slotAmts = stack.get(LaserIODataComponents.FILTER_COUNT_SLOT_COUNTS);
+        return slotAmts.get(getSlot);
     }
 
     public static void setSlotCount(ItemStack stack, int getSlot, int setCount) {
-        CompoundTag compound = stack.getOrCreateTag();
-        /**Special handling for slots with > 127 items in them**/
-        ListTag countList = compound.getList("counts", Tag.TAG_COMPOUND);
-        for (int i = 0; i < countList.size(); i++) {
-            CompoundTag countTag = countList.getCompound(i);
-            int slot = countTag.getInt("Slot");
-            if (slot == getSlot) {
-                int mbAmt = getSlotAmount(stack, i);
-                int mbCount = (int) Math.floor(mbAmt / 1000);
-                if (mbCount == setCount || mbAmt == 0) {
-                    countTag.putInt("Count", setCount);
-                } else {
-                    countTag.putInt("Count", setCount);
-                    countTag.putInt("MBAmount", setCount * 1000 + (mbAmt % 1000));
-                }
+        if (!stack.has(LaserIODataComponents.FILTER_COUNT_SLOT_COUNTS)) {
+            List<Integer> list = new ArrayList<>(FilterCountContainer.SLOTS);
+            for (int i = 0; i < FilterCountContainer.SLOTS; i++) {
+                list.add(0); //Prefill with a list of size 0
+            }
+            stack.set(LaserIODataComponents.FILTER_COUNT_SLOT_COUNTS, list);
+        }
+        List<Integer> slotAmts = new ArrayList<>(stack.get(LaserIODataComponents.FILTER_COUNT_SLOT_COUNTS));
+
+        slotAmts.set(getSlot, setCount);
+        /*if (!(mbCount == setCount || mbAmt == 0)) {
+            setSlotAmount(stack, getSlot, setCount * 1000 + (mbAmt % 1000));
+        }*/
+
+        //Now check if they are all zeros, and remove if so
+        boolean allZeros = true;
+        for (int i = 0; i < FilterCountContainer.SLOTS; i++) {
+            if (slotAmts.get(i) != 0) {
+                allZeros = false;
+                break;
             }
         }
+        if (allZeros)
+            stack.remove(LaserIODataComponents.FILTER_COUNT_SLOT_COUNTS);
+        else
+            stack.set(LaserIODataComponents.FILTER_COUNT_SLOT_COUNTS, slotAmts);
     }
 
     public static FilterCountHandler getInventory(ItemStack stack) {
-        CompoundTag compound = stack.getOrCreateTag();
         FilterCountHandler handler = new FilterCountHandler(FilterCountContainer.SLOTS, stack);
-        handler.deserializeNBT(compound.getCompound("inv"));
-        /**Special handling for slots with > 127 items in them**/
-        ListTag countList = compound.getList("counts", Tag.TAG_COMPOUND);
-        for (int i = 0; i < countList.size(); i++) {
-            CompoundTag countTag = countList.getCompound(i);
-            int slot = countTag.getInt("Slot");
-            ItemStack itemStack = handler.getStackInSlot(slot);
-            /*int mbAmt = getSlotAmount(stack, i);
-            if (mbAmt > 0)
-                itemStack.setCount((int)Math.floor(mbAmt/1000));
-            else*/
-            itemStack.setCount(countTag.getInt("Count"));
-            handler.setStackInSlot(slot, itemStack);
-        }
-        return !compound.contains("inv") ? setInventory(stack, new FilterCountHandler(FilterCountContainer.SLOTS, stack)) : handler;
+        /*for (int i = 0; i < FilterCountContainer.SLOTS; i++) {
+            ItemStack itemStack = handler.getStackInSlot(i);
+            //itemStack.setCount(getSlotCount(stack, i));
+            handler.setStackInSlot(i, itemStack);
+        }*/
+        return handler;
     }
 
-    public static FilterCountHandler setInventory(ItemStack stack, FilterCountHandler handler) {
+    /*public static FilterCountHandler setInventory(ItemStack stack, FilterCountHandler handler) {
         stack.getOrCreateTag().put("inv", handler.serializeNBT());
-        /**Special handling for slots with > 127 items in them**/
         ListTag countList = new ListTag();
         for (int i = 0; i < handler.getSlots(); i++) {
             CompoundTag countTag = new CompoundTag();
             ItemStack itemStack = handler.getStackInSlot(i);
             countTag.putInt("Slot", i);
-            if (doesItemStackHoldFluids(itemStack)) {
+            if (doesItemStackHoldFluids(itemStack) || (MekanismIntegration.isLoaded() && doesItemStackHoldChemicals(itemStack))) {
                 int mbAmt = getSlotAmount(stack, i);
                 if (mbAmt > 0) {
                     countTag.putInt("Count", Math.max(1, (int) Math.floor(mbAmt / 1000)));
@@ -144,28 +143,19 @@ public class FilterCount extends BaseFilter {
                 countTag.putInt("Count", itemStack.getCount());
                 countTag.putInt("MBAmount", 0);
             }
-            /*int mbAmt = getSlotAmount(stack, i);
-            if (mbAmt > 0)
-                countTag.putInt("Count", (int)Math.floor(mbAmt/1000));
-            else
-                countTag.putInt("Count", itemStack.getCount());
-            if (doesItemStackHoldFluids(itemStack))
-                countTag.putInt("MBAmount", itemStack.getCount() * 1000);
-            else
-                countTag.putInt("MBAmount", 0);*/
             countList.add(countTag);
         }
         stack.getOrCreateTag().put("counts", countList);
         return handler;
-    }
+    }*/
 
     public static boolean doesItemStackHoldFluids(ItemStack stack) {
-        LazyOptional<IFluidHandlerItem> fluidHandlerLazyOptional = FluidUtil.getFluidHandler(stack);
+        Optional<IFluidHandlerItem> fluidHandlerLazyOptional = FluidUtil.getFluidHandler(stack);
         if (!fluidHandlerLazyOptional.isPresent()) {
             return false;
         }
         FluidStack fluidStack = FluidStack.EMPTY;
-        IFluidHandler fluidHandler = fluidHandlerLazyOptional.resolve().get();
+        IFluidHandler fluidHandler = fluidHandlerLazyOptional.get();
         for (int tank = 0; tank < fluidHandler.getTanks(); tank++) {
             fluidStack = fluidHandler.getFluidInTank(tank);
             if (!fluidStack.isEmpty())
@@ -179,12 +169,14 @@ public class FilterCount extends BaseFilter {
 
     /** Filter Counts are always allowLists **/
     public static boolean getAllowList(ItemStack stack) {
-        CompoundTag compound = stack.getOrCreateTag();
-        return !compound.contains("allowList") ? setAllowList(stack, true) : compound.getBoolean("allowList");
+        return stack.getOrDefault(LaserIODataComponents.FILTER_ALLOW, true);
     }
 
     public static boolean setAllowList(ItemStack stack, boolean allowList) {
-        stack.getOrCreateTag().putBoolean("allowList", true);
-        return true;
+        if (!allowList)
+            stack.remove(LaserIODataComponents.FILTER_ALLOW);
+        else
+            stack.set(LaserIODataComponents.FILTER_ALLOW, true);
+        return allowList;
     }
 }

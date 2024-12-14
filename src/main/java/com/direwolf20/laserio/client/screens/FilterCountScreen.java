@@ -5,9 +5,8 @@ import com.direwolf20.laserio.common.LaserIO;
 import com.direwolf20.laserio.common.containers.FilterCountContainer;
 import com.direwolf20.laserio.common.containers.customslot.FilterBasicSlot;
 import com.direwolf20.laserio.common.items.filters.FilterCount;
-import com.direwolf20.laserio.common.network.PacketHandler;
-import com.direwolf20.laserio.common.network.packets.PacketGhostSlot;
-import com.direwolf20.laserio.common.network.packets.PacketUpdateFilter;
+import com.direwolf20.laserio.common.network.data.GhostSlotPayload;
+import com.direwolf20.laserio.common.network.data.UpdateFilterPayload;
 import com.direwolf20.laserio.util.MiscTools;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -22,14 +21,14 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FilterCountScreen extends AbstractContainerScreen<FilterCountContainer> {
-    private final ResourceLocation GUI = new ResourceLocation(LaserIO.MODID, "textures/gui/filtercount.png");
+    private final ResourceLocation GUI = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/filtercount.png");
 
     protected final FilterCountContainer container;
     private ItemStack filter;
@@ -44,7 +43,7 @@ public class FilterCountScreen extends AbstractContainerScreen<FilterCountContai
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(guiGraphics);
+        //this.renderBackground(guiGraphics);
         guiGraphics = new LaserGuiGraphics(Minecraft.getInstance(), guiGraphics.bufferSource());
         updateItemCounts();
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
@@ -76,8 +75,8 @@ public class FilterCountScreen extends AbstractContainerScreen<FilterCountContai
         this.isCompareNBT = FilterCount.getCompareNBT(filter);
 
         ResourceLocation[] nbtTextures = new ResourceLocation[2];
-        nbtTextures[0] = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/matchnbtfalse.png");
-        nbtTextures[1] = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/matchnbttrue.png");
+        nbtTextures[0] = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/matchnbtfalse.png");
+        nbtTextures[1] = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/matchnbttrue.png");
 
         leftWidgets.add(new ToggleButton(getGuiLeft() + 5, getGuiTop() + 25, 16, 16, nbtTextures, isCompareNBT ? 1 : 0, (button) -> {
             isCompareNBT = !isCompareNBT;
@@ -113,7 +112,7 @@ public class FilterCountScreen extends AbstractContainerScreen<FilterCountContai
 
     @Override
     public void onClose() {
-        PacketHandler.sendToServer(new PacketUpdateFilter(isAllowList, isCompareNBT));
+        PacketDistributor.sendToServer(new UpdateFilterPayload(isAllowList, isCompareNBT));
         super.onClose();
     }
 
@@ -139,15 +138,15 @@ public class FilterCountScreen extends AbstractContainerScreen<FilterCountContai
         if (!stack.isEmpty()) {
             stack = stack.copy();
             hoveredSlot.set(stack); // Temporarily update the client for continuity purposes
-            if (ItemHandlerHelper.canItemStacksStack(stack, container.filterItem)) return true;
-            PacketHandler.sendToServer(new PacketGhostSlot(hoveredSlot.index, stack, stack.getCount()));
-            container.handler.setStackInSlotSave(hoveredSlot.index, stack); //We do this for continuity between client/server -- not needed in cardItemScreen
+            if (ItemStack.isSameItemSameComponents(stack, container.filterItem)) return true;
+            PacketDistributor.sendToServer(new GhostSlotPayload(hoveredSlot.index, stack, stack.getCount(), -1));
+            container.handler.setStackInSlot(hoveredSlot.index, stack); //We do this for continuity between client/server -- not needed in cardItemScreen
         } else {
             ItemStack slotStack = hoveredSlot.getItem();
             if (slotStack.isEmpty()) return true;
-            if (btn == 2) { //Todo IMC Inventory Sorter so this works
+            if (btn == 2) {
                 slotStack.setCount(0);
-                PacketHandler.sendToServer(new PacketGhostSlot(hoveredSlot.index, slotStack, slotStack.getCount()));
+                PacketDistributor.sendToServer(new GhostSlotPayload(hoveredSlot.index, slotStack, slotStack.getCount(), -1));
                 return true;
             }
             int amt = (btn == 0) ? 1 : -1;
@@ -156,8 +155,8 @@ public class FilterCountScreen extends AbstractContainerScreen<FilterCountContai
             if (amt + slotStack.getCount() > 4096) amt = 4096 - slotStack.getCount();
             slotStack.grow(amt);
 
-            PacketHandler.sendToServer(new PacketGhostSlot(hoveredSlot.index, slotStack, slotStack.getCount()));
-            container.handler.setStackInSlotSave(hoveredSlot.index, slotStack); //We do this for continuity between client/server -- not needed in cardItemScreen
+            PacketDistributor.sendToServer(new GhostSlotPayload(hoveredSlot.index, slotStack, slotStack.getCount(), -1));
+            container.handler.setStackInSlot(hoveredSlot.index, slotStack); //We do this for continuity between client/server -- not needed in cardItemScreen
         }
 
 
@@ -169,9 +168,9 @@ public class FilterCountScreen extends AbstractContainerScreen<FilterCountContai
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta, double deltaY) {
         if (hoveredSlot == null || !(hoveredSlot instanceof FilterBasicSlot))
-            return super.mouseScrolled(mouseX, mouseY, delta);
+            return super.mouseScrolled(mouseX, mouseY, delta, deltaY);
 
         ItemStack slotStack = hoveredSlot.getItem();
         if (slotStack.isEmpty()) return true;
@@ -183,7 +182,7 @@ public class FilterCountScreen extends AbstractContainerScreen<FilterCountContai
             amt = (slotStack.getCount() * -1) + 1;
         slotStack.grow(amt);
 
-        PacketHandler.sendToServer(new PacketGhostSlot(hoveredSlot.index, slotStack, slotStack.getCount()));
+        PacketDistributor.sendToServer(new GhostSlotPayload(hoveredSlot.index, slotStack, slotStack.getCount(), -1));
         return true;
     }
 

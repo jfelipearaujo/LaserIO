@@ -2,13 +2,13 @@ package com.direwolf20.laserio.client.jei.ghostfilterhandlers;
 
 import com.direwolf20.laserio.client.screens.FilterTagScreen;
 import com.direwolf20.laserio.common.containers.customslot.FilterBasicSlot;
-import com.direwolf20.laserio.common.network.PacketHandler;
-import com.direwolf20.laserio.common.network.packets.PacketGhostSlot;
+import com.direwolf20.laserio.common.network.data.GhostSlotPayload;
 import mezz.jei.api.gui.handlers.IGhostIngredientHandler;
 import mezz.jei.api.ingredients.ITypedIngredient;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,22 +35,9 @@ public class GhostFilterTag implements IGhostIngredientHandler<FilterTagScreen> 
                     @Override
                     public void accept(I ingredient) {
                         slot.set((ItemStack) ingredient);
-                        PacketHandler.sendToServer(new PacketGhostSlot(slot.index, (ItemStack) ingredient, ((ItemStack) ingredient).getCount()));
-                        //RS.NETWORK_HANDLER.sendToServer(new SetFilterSlotMessage(slot.index, (ItemStack) ingredient));
+                        PacketDistributor.sendToServer(new GhostSlotPayload(slot.index, (ItemStack) ingredient, ((ItemStack) ingredient).getCount(), -1));
                     }
                 });
-           /*} else if (ingredient instanceof FluidStack && slot instanceof FluidFilterSlot) {
-                targets.add(new Target<I>() {
-                    @Override
-                    public Rect2i getArea() {
-                        return bounds;
-                    }
-
-                    @Override
-                    public void accept(I ingredient) {
-                        RS.NETWORK_HANDLER.sendToServer(new SetFluidFilterSlotMessage(slot.index, StackUtils.copy((FluidStack) ingredient, FluidAttributes.BUCKET_VOLUME)));
-                    }
-                });*/
             }
         }
         return targets;

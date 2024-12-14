@@ -2,8 +2,8 @@ package com.direwolf20.laserio.util;
 
 import com.direwolf20.laserio.common.blockentities.LaserNodeBE;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -30,7 +30,7 @@ public class TransferResult {
     }
 
     public void addRemainingStack(ItemStack stack) {
-        this.remainingStack = stack; //TODO Copy?
+        this.remainingStack = stack;
     }
 
     public int getTotalItemCounts() {
@@ -41,7 +41,7 @@ public class TransferResult {
         results.addAll(newResult.results);
         if (remainingStack.isEmpty())
             remainingStack = newResult.remainingStack;
-        else if (ItemHandlerHelper.canItemStacksStack(remainingStack, newResult.remainingStack))
+        else if (ItemStack.isSameItemSameComponents(remainingStack, newResult.remainingStack))
             remainingStack.grow(newResult.remainingStack.getCount());
     }
 

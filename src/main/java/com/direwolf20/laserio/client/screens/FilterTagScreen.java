@@ -1,49 +1,50 @@
 package com.direwolf20.laserio.client.screens;
 
-import com.direwolf20.laserio.client.renderer.LaserIOItemRenderer;
-import com.direwolf20.laserio.client.renderer.LaserIOItemRendererFluid;
 import com.direwolf20.laserio.client.screens.widgets.IconButton;
 import com.direwolf20.laserio.client.screens.widgets.ToggleButton;
 import com.direwolf20.laserio.common.LaserIO;
 import com.direwolf20.laserio.common.containers.FilterTagContainer;
 import com.direwolf20.laserio.common.containers.customslot.FilterBasicSlot;
 import com.direwolf20.laserio.common.items.filters.FilterTag;
-import com.direwolf20.laserio.common.network.PacketHandler;
-import com.direwolf20.laserio.common.network.packets.PacketGhostSlot;
-import com.direwolf20.laserio.common.network.packets.PacketUpdateFilterTag;
+import com.direwolf20.laserio.common.network.data.GhostSlotPayload;
+import com.direwolf20.laserio.common.network.data.UpdateFilterTagPayload;
+import com.direwolf20.laserio.integration.mekanism.MekanismIntegration;
+import com.direwolf20.laserio.integration.mekanism.MekanismStatics;
 import com.direwolf20.laserio.util.MagicHelpers;
 import com.direwolf20.laserio.util.MiscTools;
 import com.mojang.blaze3d.platform.InputConstants;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.FluidUtil;
-import net.minecraftforge.fluids.capability.IFluidHandler;
-import net.minecraftforge.fluids.capability.IFluidHandlerItem;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.fluids.FluidStack;
+import net.neoforged.neoforge.fluids.FluidUtil;
+import net.neoforged.neoforge.fluids.capability.IFluidHandler;
+import net.neoforged.neoforge.fluids.capability.IFluidHandlerItem;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.awt.*;
 import java.util.List;
 import java.util.*;
 
 public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer> {
-    private final ResourceLocation GUI = new ResourceLocation(LaserIO.MODID, "textures/gui/filtertag.png");
+    private final ResourceLocation GUI = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/filtertag.png");
 
     protected final FilterTagContainer container;
     private ItemStack filter;
@@ -57,8 +58,6 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
     List<String> tags = new ArrayList<>();
     List<String> stackInSlotTags = new ArrayList<>();
     int cycleRenders = 0;
-    LaserIOItemRenderer tagItemRenderer;
-    LaserIOItemRendererFluid tagFluidRenderer;
 
 
     public FilterTagScreen(FilterTagContainer container, Inventory inv, Component name) {
@@ -68,15 +67,11 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
         this.imageWidth = 200;
         this.imageHeight = 254;
         this.tags = FilterTag.getTags(filter);
-        Minecraft minecraft = Minecraft.getInstance();
-        BlockEntityWithoutLevelRenderer blockentitywithoutlevelrenderer = new BlockEntityWithoutLevelRenderer(minecraft.getBlockEntityRenderDispatcher(), minecraft.getEntityModels());
-        tagItemRenderer = new LaserIOItemRenderer(Minecraft.getInstance(), minecraft.getTextureManager(), minecraft.getModelManager(), minecraft.getItemColors(), blockentitywithoutlevelrenderer);
-        tagFluidRenderer = new LaserIOItemRendererFluid(minecraft, minecraft.getTextureManager(), minecraft.getModelManager(), minecraft.getItemColors(), blockentitywithoutlevelrenderer, this);
     }
 
     @Override
     public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
-        this.renderBackground(guiGraphics);
+        //this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTicks);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
         if (MiscTools.inBounds(getGuiLeft() + 5, getGuiTop() + 10, 16, 16, mouseX, mouseY)) {
@@ -127,7 +122,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
         overSlot = -1;
         LaserGuiGraphics laserGuiGraphics = new LaserGuiGraphics(minecraft, guiGraphics.bufferSource());
         for (String tag : displayTags) {
-            List<Item> tagItems = ForgeRegistries.ITEMS.tags().getTag(ItemTags.create(new ResourceLocation(tag))).stream().toList();
+            List<Holder<Item>> tagItems = BuiltInRegistries.ITEM.getTag(ItemTags.create(ResourceLocation.parse(tag))).stream().flatMap(HolderSet.ListBacked::stream).toList();
             ItemStack drawStack = ItemStack.EMPTY;
             if (tagItems.size() > 0) {
                 drawStack = new ItemStack(tagItems.get((cycleRenders / 120) % tagItems.size()));
@@ -137,7 +132,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
                 matrixStack.popPose();
             }
 
-            List<Fluid> tagFluids = ForgeRegistries.FLUIDS.tags().getTag(FluidTags.create(new ResourceLocation(tag))).stream().toList();
+            List<Holder<Fluid>> tagFluids = BuiltInRegistries.FLUID.getTag(FluidTags.create(ResourceLocation.parse(tag))).stream().flatMap(HolderSet.ListBacked::stream).toList();
             FluidStack drawFluidStack = FluidStack.EMPTY;
             ItemStack bucketStack = ItemStack.EMPTY;
             if (tagFluids.size() > 0) {
@@ -197,27 +192,28 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
         }
     }
 
+    private void checkTag(TagKey<?> tagKey) {
+        String tag = tagKey.location().toString().toLowerCase(Locale.ROOT);
+        if (!stackInSlotTags.contains(tag) && !tags.contains(tag))
+            stackInSlotTags.add(tag);
+    }
+
     protected void populateStackInSlotTags() {
         stackInSlotTags = new ArrayList<>();
         ItemStack stackInSlot = container.handler.getStackInSlot(0);
         if (!stackInSlot.isEmpty()) {
-            stackInSlot.getItem().builtInRegistryHolder().tags().forEach(t -> {
-                String tag = t.location().toString().toLowerCase(Locale.ROOT);
-                if (!stackInSlotTags.contains(tag) && !tags.contains(tag))
-                    stackInSlotTags.add(tag);
-            });
+            stackInSlot.getItem().builtInRegistryHolder().tags().forEach(this::checkTag);
 
-            Optional<IFluidHandlerItem> fluidHandlerLazyOptional = FluidUtil.getFluidHandler(stackInSlot).resolve();
+            Optional<IFluidHandlerItem> fluidHandlerLazyOptional = FluidUtil.getFluidHandler(stackInSlot);
             if (fluidHandlerLazyOptional.isPresent()) {
                 IFluidHandler fluidHandler = fluidHandlerLazyOptional.get();
                 for (int tank = 0; tank < fluidHandler.getTanks(); tank++) {
                     FluidStack fluidStack = fluidHandler.getFluidInTank(tank);
-                    fluidStack.getFluid().builtInRegistryHolder().tags().forEach(t -> {
-                        String tag = t.location().toString().toLowerCase(Locale.ROOT);
-                        if (!stackInSlotTags.contains(tag) && !tags.contains(tag))
-                            stackInSlotTags.add(tag);
-                    });
+                    fluidStack.getFluid().builtInRegistryHolder().tags().forEach(this::checkTag);
                 }
+            }
+            if (MekanismIntegration.isLoaded()) {
+                MekanismStatics.getTagsFromItemStack(stackInSlot).forEach(this::checkTag);
             }
         }
     }
@@ -230,15 +226,15 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
         this.isAllowList = FilterTag.getAllowList(filter);
 
         ResourceLocation[] allowListTextures = new ResourceLocation[2];
-        allowListTextures[0] = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/allowlistfalse.png");
-        allowListTextures[1] = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/allowlisttrue.png");
+        allowListTextures[0] = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/allowlistfalse.png");
+        allowListTextures[1] = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/allowlisttrue.png");
 
         leftWidgets.add(new ToggleButton(getGuiLeft() + 5, getGuiTop() + 5, 16, 16, allowListTextures, isAllowList ? 1 : 0, (button) -> {
             isAllowList = !isAllowList;
             ((ToggleButton) button).setTexturePosition(isAllowList ? 1 : 0);
         }));
 
-        ResourceLocation add = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/add.png");
+        ResourceLocation add = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/add.png");
         Button addButton = new IconButton(getGuiLeft() + 155, getGuiTop() + 5, 16, 16, add, (button) -> {
             if (!tagField.getValue().isEmpty()) {
                 String tag = tagField.getValue().toLowerCase(Locale.ROOT);
@@ -270,7 +266,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
         });
         leftWidgets.add(addButton);
 
-        ResourceLocation remove = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/remove.png");
+        ResourceLocation remove = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/remove.png");
         Button removeButton = new IconButton(getGuiLeft() + 135, getGuiTop() + 5, 16, 16, remove, (button) -> {
             if (selectedSlot != -1) {
                 tags.remove(displayTags.get(selectedSlot));
@@ -279,19 +275,19 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
         });
         leftWidgets.add(removeButton);
 
-        ResourceLocation clear = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/clear.png");
+        ResourceLocation clear = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/clear.png");
         Button clearButton = new IconButton(getGuiLeft() + 115, getGuiTop() + 5, 16, 16, clear, (button) -> {
             tags.clear();
         });
         leftWidgets.add(clearButton);
 
-        ResourceLocation pageup = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/pageup.png");
+        ResourceLocation pageup = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/pageup.png");
         Button pageUp = new IconButton(getGuiLeft() + 100, getGuiTop() + 157, 12, 12, pageup, (button) -> {
             if (page < maxPages) page++;
         });
         leftWidgets.add(pageUp);
 
-        ResourceLocation pagedown = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/pagedown.png");
+        ResourceLocation pagedown = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/pagedown.png");
         Button pageDown = new IconButton(getGuiLeft() + 58, getGuiTop() + 157, 12, 12, pagedown, (button) -> {
             if (page > 0) page--;
         });
@@ -328,7 +324,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
 
     @Override
     public void onClose() {
-        PacketHandler.sendToServer(new PacketUpdateFilterTag(isAllowList, tags));
+        PacketDistributor.sendToServer(new UpdateFilterTagPayload(isAllowList, tags));
         super.onClose();
     }
 
@@ -402,7 +398,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
             ItemStack stack = this.menu.getCarried();// getMinecraft().player.inventoryMenu.getCarried();
             stack = stack.copy().split(hoveredSlot.getMaxStackSize()); // Limit to slot limit
             hoveredSlot.set(stack); // Temporarily update the client for continuity purposes
-            PacketHandler.sendToServer(new PacketGhostSlot(hoveredSlot.index, stack, stack.getCount()));
+            PacketDistributor.sendToServer(new GhostSlotPayload(hoveredSlot.index, stack, stack.getCount(), -1));
             return true;
         }
         return super.mouseClicked(x, y, btn);
@@ -413,7 +409,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
     }
 
     @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
+    public boolean mouseScrolled(double mouseX, double mouseY, double delta, double deltaY) {
         if (hoveredSlot == null) {
             if (delta == -1.0) {
                 if (page < maxPages) page++;
@@ -422,7 +418,7 @@ public class FilterTagScreen extends AbstractContainerScreen<FilterTagContainer>
             }
         }
 
-        return super.mouseScrolled(mouseX, mouseY, delta);
+        return super.mouseScrolled(mouseX, mouseY, delta, deltaY);
     }
 
     private static MutableComponent getTrans(String key, Object... args) {

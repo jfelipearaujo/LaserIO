@@ -1,9 +1,8 @@
 package com.direwolf20.laserio.common.items.cards;
 
 import com.direwolf20.laserio.common.containers.CardItemContainer;
-import net.minecraft.nbt.CompoundTag;
+import com.direwolf20.laserio.setup.LaserIODataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
@@ -11,7 +10,7 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
+
 
 public class CardItem extends BaseCard {
     public CardItem() {
@@ -24,27 +23,25 @@ public class CardItem extends BaseCard {
         ItemStack itemstack = player.getItemInHand(hand);
         if (level.isClientSide()) return new InteractionResultHolder<>(InteractionResult.PASS, itemstack);
 
-        NetworkHooks.openScreen((ServerPlayer) player, new SimpleMenuProvider(
+        player.openMenu(new SimpleMenuProvider(
                 (windowId, playerInventory, playerEntity) -> new CardItemContainer(windowId, playerInventory, player, itemstack), Component.translatable("")), (buf -> {
-            buf.writeItem(itemstack);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, itemstack);
             buf.writeByte(-1);
         }));
 
-        //System.out.println(itemstack.getItem().getRegistryName()+""+itemstack.getTag());
         return new InteractionResultHolder<>(InteractionResult.PASS, itemstack);
     }
 
+    //TODO: 1.22 Consider setting default to 8
     public static byte setItemExtractAmt(ItemStack card, byte itemextractamt) {
         if (itemextractamt == 1)
-            card.removeTagKey("itemextractamt");
+            card.remove(LaserIODataComponents.ITEM_CARD_EXTRACT_AMT);
         else
-            card.getOrCreateTag().putByte("itemextractamt", itemextractamt);
+            card.set(LaserIODataComponents.ITEM_CARD_EXTRACT_AMT, itemextractamt);
         return itemextractamt;
     }
 
     public static byte getItemExtractAmt(ItemStack card) {
-        CompoundTag compound = card.getTag();
-        if (compound == null || !compound.contains("itemextractamt")) return (byte) 1;
-        return compound.getByte("itemextractamt");
+        return card.getOrDefault(LaserIODataComponents.ITEM_CARD_EXTRACT_AMT, 1).byteValue();
     }
 }

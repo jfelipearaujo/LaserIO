@@ -1,0 +1,39 @@
+modLoader="javafml" #mandatory
+loaderVersion="${loader_version_range}"
+issueTrackerURL="https://github.com/Direwolf20-MC/LaserIO/issues"
+license="MIT (https://github.com/Direwolf20-MC/LaserIO/blob/main/LICENSE.txt)"
+
+
+[[mods]] #mandatory
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+displayURL="https://github.com/Direwolf20-MC/LaserIO"
+#logoFile="examplemod.png"
+credits="Direwolf20, ErrorMikey, CPW and the entire neoforge team."
+authors="Direwolf20, ErrorMikey"
+description='''
+    Can't have DireWire without Wire!
+'''
+
+# A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
+[[dependencies.laserio]] #optional
+    modId="neoforge" #mandatory
+    type="required" #mandatory
+    versionRange="${neo_version_range}" #mandatory
+    ordering="NONE"
+    side="BOTH"
+# Here's another dependency
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    # This version range declares a minimum of the current minecraft version up to but not including the next major version
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+[[dependencies.laserio]] #optional
+    modId="mekanism" #mandatory
+    type="optional" #mandatory
+versionRange = "[10.7,)"
+    ordering="AFTER"
+    side="BOTH"

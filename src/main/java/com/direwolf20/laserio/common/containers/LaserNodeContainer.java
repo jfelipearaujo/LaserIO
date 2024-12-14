@@ -10,7 +10,8 @@ import com.direwolf20.laserio.common.items.filters.BaseFilter;
 import com.direwolf20.laserio.common.items.upgrades.OverclockerCard;
 import com.direwolf20.laserio.common.items.upgrades.OverclockerNode;
 import com.direwolf20.laserio.setup.Registration;
-import net.minecraft.network.FriendlyByteBuf;
+import com.direwolf20.laserio.util.CardHolderItemStackHandler;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -18,11 +19,9 @@ import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemStackHandler;
-import net.minecraftforge.items.SlotItemHandler;
-import net.minecraftforge.items.wrapper.InvWrapper;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.SlotItemHandler;
+import net.neoforged.neoforge.items.wrapper.InvWrapper;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -35,15 +34,15 @@ public class LaserNodeContainer extends AbstractContainerMenu {
     private IItemHandler playerInventory;
     ContainerLevelAccess containerLevelAccess;
     public ItemStack cardHolder;
-    public IItemHandler cardHolderHandler;
+    public CardHolderItemStackHandler cardHolderHandler;
     public UUID cardHolderUUID;
 
     // Tile can be null and shouldn't be used for accessing any data that needs to be up to date on both sides
     public LaserNodeBE tile;
     public byte side;
 
-    public LaserNodeContainer(int windowId, Inventory playerInventory, Player player, FriendlyByteBuf extraData) {
-        this((LaserNodeBE) playerInventory.player.level().getBlockEntity(extraData.readBlockPos()), windowId, extraData.readByte(), playerInventory, player, new LaserNodeItemHandler(SLOTS), ContainerLevelAccess.NULL, extraData.readItem());
+    public LaserNodeContainer(int windowId, Inventory playerInventory, Player player, RegistryFriendlyByteBuf extraData) {
+        this((LaserNodeBE) playerInventory.player.level().getBlockEntity(extraData.readBlockPos()), windowId, extraData.readByte(), playerInventory, player, new LaserNodeItemHandler(SLOTS), ContainerLevelAccess.NULL, ItemStack.OPTIONAL_STREAM_CODEC.decode(extraData));
     }
 
     public LaserNodeContainer(@Nullable LaserNodeBE tile, int windowId, byte side, Inventory playerInventory, Player player, LaserNodeItemHandler handler, ContainerLevelAccess containerLevelAccess, ItemStack cardHolder) {
@@ -59,10 +58,14 @@ public class LaserNodeContainer extends AbstractContainerMenu {
         }
         this.cardHolder = cardHolder;
 
-        this.cardHolderHandler = cardHolder.getCapability(ForgeCapabilities.ITEM_HANDLER, null).orElse(new ItemStackHandler(CardHolderContainer.SLOTS));
-        addSlotBox(cardHolderHandler, 0, -92, 32, 5, 18, 3, 18);
-        cardHolderUUID = CardHolder.getUUID(cardHolder);
-
+        //if (!cardHolder.isEmpty()) {
+        if (!cardHolder.isEmpty())
+            cardHolderHandler = new CardHolderItemStackHandler(CardHolderContainer.SLOTS, cardHolder);
+        else
+            cardHolderHandler = new CardHolderItemStackHandler(CardHolderContainer.SLOTS, ItemStack.EMPTY);
+            addSlotBox(cardHolderHandler, 0, -92, 32, 5, 18, 3, 18);
+            cardHolderUUID = CardHolder.getUUID(cardHolder);
+        //}
         layoutPlayerInventorySlots(8, 99);
     }
 
@@ -73,7 +76,7 @@ public class LaserNodeContainer extends AbstractContainerMenu {
                 ItemStack carriedItem = getCarried();
                 ItemStack stackInSlot = slots.get(slotId).getItem();
                 if (stackInSlot.getMaxStackSize() == 1 && stackInSlot.getCount() > 1) {
-                    if (!carriedItem.isEmpty() && !stackInSlot.isEmpty() && !ItemStack.isSameItemSameTags(carriedItem, stackInSlot))
+                    if (!carriedItem.isEmpty() && !stackInSlot.isEmpty() && !ItemStack.isSameItemSameComponents(carriedItem, stackInSlot))
                         return;
                 }
             } else {
@@ -122,17 +125,19 @@ public class LaserNodeContainer extends AbstractContainerMenu {
 
             Slot slot = this.slots.get(i);
             ItemStack itemstack = slot.getItem();
-            if (!itemstack.isEmpty() && ItemStack.isSameItemSameTags(itemStack, itemstack)) {
+            if (!itemstack.isEmpty() && ItemStack.isSameItemSameComponents(itemStack, itemstack)) {
                 int j = itemstack.getCount() + itemStack.getCount();
                 int maxSize = Math.min(slot.getMaxStackSize(), slot.getMaxStackSize(itemStack));
                 if (j <= maxSize) {
                     itemStack.setCount(0);
                     itemstack.setCount(j);
+                    slot.setByPlayer(itemstack);
                     slot.setChanged();
                     flag = true;
                 } else if (itemstack.getCount() < maxSize) {
                     itemStack.shrink(maxSize - itemstack.getCount());
                     itemstack.setCount(maxSize);
+                    slot.setByPlayer(itemstack);
                     slot.setChanged();
                     flag = true;
                 }
@@ -206,9 +211,11 @@ public class LaserNodeContainer extends AbstractContainerMenu {
             else
                 stackToMove = stack;
             //Try to move 1 card to the node slots first, failing that, to the inventory!
-            if (this.moveItemStackTo(stackToMove, 0, CARDSLOTS+1, false)) {
+            if (this.moveItemStackTo(stackToMove, 0, CARDSLOTS + 1, false)) {
+                slot.set(stack);
                 return ItemStack.EMPTY;
             } else if (this.moveItemStackTo(stackToMove, SLOTS, 36 + SLOTS, true)) {
+                slot.set(stack);
                 return ItemStack.EMPTY;
             } else {
                 stack.grow(1);

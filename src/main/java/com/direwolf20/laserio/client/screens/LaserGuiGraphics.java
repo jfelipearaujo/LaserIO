@@ -13,6 +13,7 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.client.ItemDecoratorHandler;
 import org.jetbrains.annotations.Nullable;
 
 public class LaserGuiGraphics extends GuiGraphics {
@@ -52,7 +53,7 @@ public class LaserGuiGraphics extends GuiGraphics {
             }
 
             LocalPlayer localplayer = this.minecraft.player;
-            float f = localplayer == null ? 0.0F : localplayer.getCooldowns().getCooldownPercent(itemStack.getItem(), this.minecraft.getFrameTime());
+            float f = localplayer == null ? 0.0F : localplayer.getCooldowns().getCooldownPercent(itemStack.getItem(), this.minecraft.getFrameTimeNs());
             if (f > 0.0F) {
                 int i1 = y + Mth.floor(16.0F * (1.0F - f));
                 int j1 = i1 + Mth.ceil(16.0F * f);
@@ -60,7 +61,7 @@ public class LaserGuiGraphics extends GuiGraphics {
             }
 
             pose.popPose();
-            net.minecraftforge.client.ItemDecoratorHandler.of(itemStack).render(this, font, itemStack, x, y);
+            ItemDecoratorHandler.of(itemStack).render(this, font, itemStack, x, y);
         }
     }
 

@@ -1,28 +1,22 @@
 package com.direwolf20.laserio.common.containers.customhandler;
 
-import com.direwolf20.laserio.common.items.filters.FilterBasic;
+import com.direwolf20.laserio.setup.LaserIODataComponents;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.ItemStackHandler;
+import net.neoforged.neoforge.items.ComponentItemHandler;
 
 import javax.annotation.Nonnull;
 
-public class FilterBasicHandler extends ItemStackHandler {
+public class FilterBasicHandler extends ComponentItemHandler {
     public ItemStack stack;
 
     public FilterBasicHandler(int size, ItemStack itemStack) {
-        super(size);
+        super(itemStack, LaserIODataComponents.ITEMSTACK_HANDLER.get(), size);
         this.stack = itemStack;
     }
 
     @Override
-    protected void onContentsChanged(int slot) {
-        if (!stack.isEmpty())
-            FilterBasic.setInventory(stack, this);
-    }
-
-    @Override
     public boolean isItemValid(int slot, @Nonnull ItemStack stack) {
-        return super.isItemValid(slot, stack);
+        return true;
     }
 
     @Override

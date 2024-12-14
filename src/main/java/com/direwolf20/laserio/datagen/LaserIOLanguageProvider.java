@@ -3,7 +3,7 @@ package com.direwolf20.laserio.datagen;
 import com.direwolf20.laserio.common.LaserIO;
 import com.direwolf20.laserio.setup.Registration;
 import net.minecraft.data.PackOutput;
-import net.minecraftforge.common.data.LanguageProvider;
+import net.neoforged.neoforge.common.data.LanguageProvider;
 
 import static com.direwolf20.laserio.setup.ModSetup.TAB_NAME;
 
@@ -24,11 +24,12 @@ public class LaserIOLanguageProvider extends LanguageProvider {
         add(Registration.Card_Fluid.get(), "Fluid Card");
         add(Registration.Card_Energy.get(), "Energy Card");
         add(Registration.Card_Redstone.get(), "Redstone Card");
+        add(Registration.Card_Chemical.get(), "Chemical Card");
         add(Registration.Filter_Basic.get(), "Basic Filter");
         add(Registration.Filter_Count.get(), "Counting Filter");
         add(Registration.Filter_Tag.get(), "Tag Filter");
         add(Registration.Filter_Mod.get(), "Mod Filter");
-        add(Registration.Filter_NBT.get(), "NBT Filter");
+        add(Registration.Filter_NBT.get(), "Data Filter");
         add(Registration.Logic_Chip.get(), "Logic Chip");
         add(Registration.Logic_Chip_Raw.get(), "Raw Logic Chip");
         add(Registration.Overclocker_Card.get(), "Card Overclocker");
@@ -50,7 +51,7 @@ public class LaserIOLanguageProvider extends LanguageProvider {
         add("screen.laserio.and", "And");
         add("screen.laserio.or", "Or");
         add("screen.laserio.allowlist", "Allow");
-        add("screen.laserio.comparenbt", "NBT");
+        add("screen.laserio.comparenbt", "Data");
         add("screen.laserio.lasernode", "Laser Node");
         add("screen.laserio.energylimit", "Energy Limit (%)");
 
@@ -82,9 +83,12 @@ public class LaserIOLanguageProvider extends LanguageProvider {
         add("screen.laserio.low", "Low");
         add("screen.laserio.high", "High");
 
+        add("screen.laserio.showparticles", "Show Particles");
+        add("screen.laserio.hideparticles", "Hide Particles");
+
         add("screen.laserio.denylist", "Deny");
-        add("screen.laserio.nbttrue", "Match NBT");
-        add("screen.laserio.nbtfalse", "Ignore NBT");
+        add("screen.laserio.nbttrue", "Match Data");
+        add("screen.laserio.nbtfalse", "Ignore Data");
 
         add("message.laserio.wrenchrange", "Connection exceeds maximum range of %d");
 
@@ -111,10 +115,13 @@ public class LaserIOLanguageProvider extends LanguageProvider {
         add("laserio.tooltip.item.filter.type", "Type: ");
         add("laserio.tooltip.item.filter.type.allow", "Allow");
         add("laserio.tooltip.item.filter.type.deny", "Deny");
-        add("laserio.tooltip.item.filter.nbt", "Match NBT: ");
+        add("laserio.tooltip.item.filter.nbt", "Match Data: ");
         add("laserio.tooltip.item.filter.nbt.allow", "True");
         add("laserio.tooltip.item.filter.nbt.deny", "False");
 
+        //Command/particle errors
+        add("laserio.error.particle.chemical_type", "Unknown Chemical Type: %s");
+        add("laserio.error.particle.chemical", "Unknown Chemical: %s of Type: %s");
         //add("", "");
     }
 }

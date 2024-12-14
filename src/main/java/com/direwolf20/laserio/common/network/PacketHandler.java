@@ -1,78 +1,38 @@
 package com.direwolf20.laserio.common.network;
 
 import com.direwolf20.laserio.common.LaserIO;
-import com.direwolf20.laserio.common.network.packets.*;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.simple.SimpleChannel;
+import com.direwolf20.laserio.common.network.data.*;
+import com.direwolf20.laserio.common.network.handler.*;
+import com.direwolf20.laserio.integration.mekanism.MekanismIntegration;
+import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
+import net.neoforged.neoforge.network.registration.PayloadRegistrar;
+
 
 public class PacketHandler {
-    private static final String PROTOCOL_VERSION = Integer.toString(2);
-    private static short index = 0;
-
-    public static final SimpleChannel HANDLER = NetworkRegistry.ChannelBuilder
-            .named(new ResourceLocation(LaserIO.MODID, "main_network_channel"))
-            .clientAcceptedVersions(PROTOCOL_VERSION::equals)
-            .serverAcceptedVersions(PROTOCOL_VERSION::equals)
-            .networkProtocolVersion(() -> PROTOCOL_VERSION)
-            .simpleChannel();
-
-    public static void register() {
-        int id = 0;
+    public static void registerNetworking(final RegisterPayloadHandlersEvent event) {
+        final PayloadRegistrar registrar = event.registrar(LaserIO.MODID);
 
         // Server side
-        HANDLER.registerMessage(id++, PacketUpdateCard.class, PacketUpdateCard::encode, PacketUpdateCard::decode, PacketUpdateCard.Handler::handle);
-        HANDLER.registerMessage(id++, PacketUpdateRedstoneCard.class, PacketUpdateRedstoneCard::encode, PacketUpdateRedstoneCard::decode, PacketUpdateRedstoneCard.Handler::handle);
-        HANDLER.registerMessage(id++, PacketUpdateFilter.class, PacketUpdateFilter::encode, PacketUpdateFilter::decode, PacketUpdateFilter.Handler::handle);
-        HANDLER.registerMessage(id++, PacketOpenCard.class, PacketOpenCard::encode, PacketOpenCard::decode, PacketOpenCard.Handler::handle);
-        HANDLER.registerMessage(id++, PacketOpenFilter.class, PacketOpenFilter::encode, PacketOpenFilter::decode, PacketOpenFilter.Handler::handle);
-        HANDLER.registerMessage(id++, PacketGhostSlot.class, PacketGhostSlot::encode, PacketGhostSlot::decode, PacketGhostSlot.Handler::handle);
-        HANDLER.registerMessage(id++, PacketOpenNode.class, PacketOpenNode::encode, PacketOpenNode::decode, PacketOpenNode.Handler::handle);
-        HANDLER.registerMessage(id++, PacketUpdateFilterTag.class, PacketUpdateFilterTag::encode, PacketUpdateFilterTag::decode, PacketUpdateFilterTag.Handler::handle);
-        HANDLER.registerMessage(id++, PacketChangeColor.class, PacketChangeColor::encode, PacketChangeColor::decode, PacketChangeColor.Handler::handle);
-        HANDLER.registerMessage(id++, PacketCopyPasteCard.class, PacketCopyPasteCard::encode, PacketCopyPasteCard::decode, PacketCopyPasteCard.Handler::handle);
-        //HANDLER.registerMessage(id++, PacketExtractUpgrade.class,     PacketExtractUpgrade::encode,       PacketExtractUpgrade::decode,       PacketExtractUpgrade.Handler::handle);
+        registrar.playToServer(UpdateCardPayload.TYPE, UpdateCardPayload.STREAM_CODEC, PacketUpdateCard.get()::handle);
+        registrar.playToServer(UpdateRedstoneCardPayload.TYPE, UpdateRedstoneCardPayload.STREAM_CODEC, PacketUpdateRedstoneCard.get()::handle);
+        registrar.playToServer(UpdateFilterPayload.TYPE, UpdateFilterPayload.STREAM_CODEC, PacketUpdateFilter.get()::handle);
+        registrar.playToServer(OpenCardPayload.TYPE, OpenCardPayload.STREAM_CODEC, PacketOpenCard.get()::handle);
+        registrar.playToServer(OpenFilterPayload.TYPE, OpenFilterPayload.STREAM_CODEC, PacketOpenFilter.get()::handle);
+        registrar.playToServer(GhostSlotPayload.TYPE, GhostSlotPayload.STREAM_CODEC, PacketGhostSlot.get()::handle);
+        registrar.playToServer(OpenNodePayload.TYPE, OpenNodePayload.STREAM_CODEC, PacketOpenNode.get()::handle);
+        registrar.playToServer(UpdateFilterTagPayload.TYPE, UpdateFilterTagPayload.STREAM_CODEC, PacketUpdateFilterTag.get()::handle);
+        registrar.playToServer(ToggleParticlesPayload.TYPE, ToggleParticlesPayload.STREAM_CODEC, PacketToggleParticles.get()::handle);
+        registrar.playToServer(ChangeColorPayload.TYPE, ChangeColorPayload.STREAM_CODEC, PacketChangeColor.get()::handle);
+        registrar.playToServer(CopyPasteCardPayload.TYPE, CopyPasteCardPayload.STREAM_CODEC, PacketCopyPasteCard.get()::handle);
 
         //Client Side
-        HANDLER.registerMessage(id++, PacketNodeParticles.class, PacketNodeParticles::encode, PacketNodeParticles::decode, PacketNodeParticles.Handler::handle);
-        HANDLER.registerMessage(id++, PacketNodeParticlesFluid.class, PacketNodeParticlesFluid::encode, PacketNodeParticlesFluid::decode, PacketNodeParticlesFluid.Handler::handle);
-        //HANDLER.registerMessage(id++, PacketDurabilitySync.class,     PacketDurabilitySync::encode,       PacketDurabilitySync::decode,       PacketDurabilitySync.Handler::handle);
+        registrar.playToClient(NodeParticlesPayload.TYPE, NodeParticlesPayload.STREAM_CODEC, PacketNodeParticles.get()::handle);
+        registrar.playToClient(NodeParticlesFluidPayload.TYPE, NodeParticlesFluidPayload.STREAM_CODEC, PacketNodeParticlesFluid.get()::handle);
 
-    }
-
-    public static void sendTo(Object msg, ServerPlayer player) {
-        if (!(player instanceof FakePlayer))
-            HANDLER.sendTo(msg, player.connection.connection, NetworkDirection.PLAY_TO_CLIENT);
-    }
-
-    public static void sendToAll(Object msg, Level level) {
-        for (Player player : level.players()) {
-            if (!(player instanceof FakePlayer))
-                HANDLER.sendTo(msg, ((ServerPlayer) player).connection.connection, NetworkDirection.PLAY_TO_CLIENT);
+        //Mekanism Packets Only
+        if (MekanismIntegration.isLoaded()) {
+            //Client Side
+            registrar.playToClient(NodeParticlesChemicalPayload.TYPE, NodeParticlesChemicalPayload.STREAM_CODEC, PacketNodeParticlesChemical.get()::handle);
         }
-    }
-
-    /**
-     * Sends a vanilla packet to the given player
-     *
-     * @param player Player
-     * @param packet Packet
-     *               Stolen from Tinkers Construct :)
-     */
-    public static void sendVanillaPacket(Entity player, Packet<?> packet) {
-        if (player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.connection.send(packet);
-        }
-    }
-
-    public static void sendToServer(Object msg) {
-        HANDLER.sendToServer(msg);
     }
 }

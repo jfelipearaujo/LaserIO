@@ -6,21 +6,21 @@ import com.direwolf20.laserio.common.blockentities.LaserConnectorAdvBE;
 import com.direwolf20.laserio.common.blockentities.basebe.BaseLaserBE;
 import com.direwolf20.laserio.common.blocks.LaserConnectorAdv;
 import com.direwolf20.laserio.common.items.LaserWrench;
-import com.direwolf20.laserio.util.DimBlockPos;
 import com.direwolf20.laserio.util.VectorHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.client.event.CustomizeGuiOverlayEvent;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.neoforge.client.event.CustomizeGuiOverlayEvent;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
 import static com.direwolf20.laserio.client.events.RenderGUIOverlay.renderLocation;
 
@@ -35,11 +35,11 @@ public class ClientEvents {
 
         ItemStack myItem = getWrench(myplayer);
         if (myItem.getItem() instanceof LaserWrench) {
-            DimBlockPos selectedDimPos = LaserWrench.getConnectionPos(myItem, myplayer.level());
-            if (selectedDimPos != null && myplayer.level().dimension().equals(selectedDimPos.levelKey)) {
-                BlockEntity be = myplayer.level().getBlockEntity(selectedDimPos.blockPos);
-                if (!selectedDimPos.blockPos.equals(BlockPos.ZERO) && (be instanceof BaseLaserBE))
-                    BlockOverlayRender.renderSelectedBlock(evt, selectedDimPos.blockPos, (BaseLaserBE) be);
+            GlobalPos selectedDimPos = LaserWrench.getConnectionPos(myItem, myplayer.level());
+            if (selectedDimPos != null && myplayer.level().dimension().equals(selectedDimPos.dimension())) {
+                BlockEntity be = myplayer.level().getBlockEntity(selectedDimPos.pos());
+                if (!selectedDimPos.pos().equals(BlockPos.ZERO) && (be instanceof BaseLaserBE))
+                    BlockOverlayRender.renderSelectedBlock(evt, selectedDimPos.pos(), (BaseLaserBE) be);
             }
         }
 

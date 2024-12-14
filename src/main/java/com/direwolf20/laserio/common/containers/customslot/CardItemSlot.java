@@ -3,12 +3,12 @@ package com.direwolf20.laserio.common.containers.customslot;
 import com.direwolf20.laserio.common.containers.CardItemContainer;
 import com.direwolf20.laserio.common.items.filters.BaseFilter;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.SlotItemHandler;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.ItemHandlerCopySlot;
 
 import javax.annotation.Nonnull;
 
-public class CardItemSlot extends SlotItemHandler {
+public class CardItemSlot extends ItemHandlerCopySlot {
     CardItemContainer parentContainer;
     protected boolean enabled = true;
 
@@ -19,12 +19,13 @@ public class CardItemSlot extends SlotItemHandler {
 
     @Override
     public boolean mayPlace(@Nonnull ItemStack stack) {
+        if (stack.isEmpty()) return true;
         return (stack.getItem() instanceof BaseFilter);
     }
 
     @Override
-    public void setChanged() {
-        super.setChanged();
+    protected void setStackCopy(ItemStack stack) {
+        super.setStackCopy(stack);
         parentContainer.toggleFilterSlots();
     }
 

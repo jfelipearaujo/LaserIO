@@ -1,12 +1,9 @@
 package com.direwolf20.laserio.common.containers;
 
 import com.direwolf20.laserio.common.blockentities.LaserNodeBE;
-import com.direwolf20.laserio.common.containers.customhandler.CardItemHandler;
-import com.direwolf20.laserio.common.containers.customslot.CardOverclockSlot;
-import com.direwolf20.laserio.common.items.cards.CardEnergy;
 import com.direwolf20.laserio.setup.Registration;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -16,16 +13,13 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.items.SlotItemHandler;
-import net.minecraftforge.items.wrapper.InvWrapper;
+import net.neoforged.neoforge.items.IItemHandler;
+import net.neoforged.neoforge.items.SlotItemHandler;
+import net.neoforged.neoforge.items.wrapper.InvWrapper;
 
 import javax.annotation.Nullable;
 
 public class CardEnergyContainer extends AbstractContainerMenu {
-    public static final int SLOTS = 1;
-    public CardItemHandler handler;
     public ItemStack cardItem;
     public Player playerEntity;
     protected IItemHandler playerInventory;
@@ -36,24 +30,16 @@ public class CardEnergyContainer extends AbstractContainerMenu {
         super(pMenuType, pContainerId);
     }
 
-    public CardEnergyContainer(int windowId, Inventory playerInventory, Player player, FriendlyByteBuf extraData) {
-        this(windowId, playerInventory, player, extraData.readItem());
+    public CardEnergyContainer(int windowId, Inventory playerInventory, Player player, RegistryFriendlyByteBuf extraData) {
+        this(windowId, playerInventory, player, ItemStack.OPTIONAL_STREAM_CODEC.decode(extraData));
         this.direction = extraData.readByte();
     }
 
     public CardEnergyContainer(int windowId, Inventory playerInventory, Player player, ItemStack cardItem) {
         super(Registration.CardEnergy_Container.get(), windowId);
         playerEntity = player;
-        this.handler = CardEnergy.getInventory(cardItem);
         this.playerInventory = new InvWrapper(playerInventory);
         this.cardItem = cardItem;
-        if (handler != null) {
-            //addSlotRange(handler, 0, 80, 5, 1, 18);
-            addSlotRange(handler, 0, 153, 5, 1, 18);
-            //addSlotBox(filterHandler, 0, 44, 25, 5, 18, 3, 18);
-            //toggleFilterSlots();
-        }
-
         layoutPlayerInventorySlots(8, 84);
     }
 
@@ -65,26 +51,8 @@ public class CardEnergyContainer extends AbstractContainerMenu {
 
     @Override
     public void clicked(int slotId, int dragType, ClickType clickTypeIn, Player player) {
-        /*if (slotId >= SLOTS && slotId < SLOTS + FILTERSLOTS) {
-            return;
-        }*/
         super.clicked(slotId, dragType, clickTypeIn, player);
     }
-
-    /*public void getFilterHandler() {
-        ItemStack filterStack = slots.get(0).getItem(); //BaseCard.getInventory(cardItem).getStackInSlot(0);
-        if (filterStack.getItem() instanceof FilterBasic)
-            filterHandler = FilterBasic.getInventory(filterStack);
-        else if (filterStack.getItem() instanceof FilterCount)
-            filterHandler = FilterCount.getInventory(filterStack);
-        else
-            filterHandler = new FilterBasicHandler(15, ItemStack.EMPTY);
-    }
-
-    public void toggleFilterSlots() {
-        getFilterHandler();
-        updateFilterSlots(filterHandler, 0, 44, 25, 5, 18, 3, 18);
-    }*/
 
     @Override
     public boolean stillValid(Player playerIn) {
@@ -92,14 +60,6 @@ public class CardEnergyContainer extends AbstractContainerMenu {
             return playerIn.getMainHandItem().equals(cardItem) || playerIn.getOffhandItem().equals(cardItem);
         return true;
     }
-
-    /*public int getStackSize(int slot) {
-        ItemStack filterStack = filterHandler.stack;
-        if (slot >= SLOTS && slot < SLOTS + FILTERSLOTS && (slots.get(slot) instanceof FilterBasicSlot) && filterStack.getItem() instanceof FilterCount) {
-            return FilterCount.getSlotCount(filterStack, slot - SLOTS);
-        }
-        return filterHandler.getStackInSlot(slot - SLOTS).getCount();
-    }*/
 
     @Override
     public ItemStack quickMoveStack(Player playerIn, int index) {
@@ -109,24 +69,8 @@ public class CardEnergyContainer extends AbstractContainerMenu {
         if (slot != null && slot.hasItem()) {
             ItemStack stack = slot.getItem();
             itemstack = stack.copy();
-            if (ItemHandlerHelper.canItemStacksStack(itemstack, cardItem)) return ItemStack.EMPTY;
+            if (ItemStack.isSameItemSameComponents(itemstack, cardItem)) return ItemStack.EMPTY;
             //If its one of the 3 slots at the top try to move it into your inventory
-            if (index < SLOTS) {
-                if (!this.moveItemStackTo(stack, SLOTS, 36 + SLOTS, true)) {
-                    return ItemStack.EMPTY;
-                }
-                slot.onQuickCraft(stack, itemstack);
-            } else { //From player inventory TO something
-                ItemStack currentStack = slot.getItem().copy();
-                if (slots.get(0).mayPlace(currentStack)) {
-                    if (!this.moveItemStackTo(stack, 0, SLOTS, false)) {
-                        return ItemStack.EMPTY;
-                    }
-                }
-
-                if (!playerIn.level().isClientSide())
-                    CardEnergy.setInventory(cardItem, handler);
-            }
 
             if (stack.isEmpty()) {
                 slot.set(ItemStack.EMPTY);
@@ -144,33 +88,9 @@ public class CardEnergyContainer extends AbstractContainerMenu {
         return itemstack;
     }
 
-    /*protected void updateFilterSlots(IItemHandler handler, int index, int x, int y, int horAmount, int dx, int verAmount, int dy) {
-        for (int j = 0; j < verAmount; j++) {
-            for (int i = 0; i < horAmount; i++) {
-                if (handler instanceof CardItemHandler && index == 0) {
-                    //System.out.println("This shouldn't happen");
-                } else if (handler instanceof FilterBasicHandler) {
-                    slots.set(index + SLOTS, new FilterBasicSlot(handler, index, x, y, slots.get(0).getItem().getItem() instanceof FilterCount));
-                    slots.get(index + SLOTS).index = index + SLOTS; //Look at container.addSlot() -- it does this
-                } else {
-                    //System.out.println("This shouldn't happen");
-                }
-                x += dx;
-                index++;
-            }
-            y += dy;
-            x = x - (dx * horAmount);
-        }
-    }*/
-
     protected int addSlotRange(IItemHandler handler, int index, int x, int y, int amount, int dx) {
         for (int i = 0; i < amount; i++) {
-            if (handler instanceof CardItemHandler && index == 0)
-                addSlot(new CardOverclockSlot(handler, index, x, y));
-            /*else if (handler instanceof FilterBasicHandler)
-                addSlot(new FilterBasicSlot(handler, index, x, y, slots.get(0).getItem().getItem() instanceof FilterCount));*/
-            else
-                addSlot(new SlotItemHandler(handler, index, x, y));
+            addSlot(new SlotItemHandler(handler, index, x, y));
             x += dx;
             index++;
         }
@@ -198,7 +118,6 @@ public class CardEnergyContainer extends AbstractContainerMenu {
     public void removed(Player playerIn) {
         Level world = playerIn.level();
         if (!world.isClientSide) {
-            CardEnergy.setInventory(cardItem, handler);
             if (!sourceContainer.equals(BlockPos.ZERO)) {
                 BlockEntity blockEntity = world.getBlockEntity(sourceContainer);
                 if (blockEntity instanceof LaserNodeBE)

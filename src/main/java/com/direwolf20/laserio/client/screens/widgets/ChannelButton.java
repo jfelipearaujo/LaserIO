@@ -11,7 +11,7 @@ import net.minecraft.resources.ResourceLocation;
 import java.awt.*;
 
 public class ChannelButton extends Button {
-    private final ResourceLocation resourceLocation = new ResourceLocation(LaserIO.MODID, "textures/gui/buttons/blankbutton.png");
+    private final ResourceLocation resourceLocation = ResourceLocation.fromNamespaceAndPath(LaserIO.MODID, "textures/gui/buttons/blankbutton.png");
     private int channel;
     private final Color colors[] = {
             new Color(0xf9ffff),
@@ -38,7 +38,7 @@ public class ChannelButton extends Button {
     }
 
     @Override
-    public void render(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
+    public void renderWidget(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTicks) {
         //fill(stack, this.x, this.y, this.x + this.width, this.y + this.height, 0xFFa8a8a8);
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
         RenderSystem.setShaderColor(1f, 1f, 1f, 1f);

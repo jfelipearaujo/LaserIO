@@ -1,7 +1,8 @@
 package com.direwolf20.laserio.common.items.cards;
 
 import com.direwolf20.laserio.common.containers.CardFluidContainer;
-import net.minecraft.nbt.CompoundTag;
+import com.direwolf20.laserio.setup.Config;
+import com.direwolf20.laserio.setup.LaserIODataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -11,7 +12,7 @@ import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.network.NetworkHooks;
+
 
 public class CardFluid extends BaseCard {
     public CardFluid() {
@@ -24,9 +25,9 @@ public class CardFluid extends BaseCard {
         ItemStack itemstack = player.getItemInHand(hand);
         if (level.isClientSide()) return new InteractionResultHolder<>(InteractionResult.PASS, itemstack);
 
-        NetworkHooks.openScreen((ServerPlayer) player, new SimpleMenuProvider(
+        ((ServerPlayer) player).openMenu(new SimpleMenuProvider(
                 (windowId, playerInventory, playerEntity) -> new CardFluidContainer(windowId, playerInventory, player, itemstack), Component.translatable("")), (buf -> {
-            buf.writeItem(itemstack);
+            ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, itemstack);
             buf.writeByte(-1);
         }));
 
@@ -35,16 +36,14 @@ public class CardFluid extends BaseCard {
     }
 
     public static int setFluidExtractAmt(ItemStack card, int fluidextractamt) {
-        if (fluidextractamt == 1000)
-            card.removeTagKey("fluidextractamt");
+        if (fluidextractamt == Config.BASE_MILLI_BUCKETS_FLUID.get())
+            card.remove(LaserIODataComponents.FLUID_CARD_EXTRACT_AMT);
         else
-            card.getOrCreateTag().putInt("fluidextractamt", fluidextractamt);
+            card.set(LaserIODataComponents.FLUID_CARD_EXTRACT_AMT, fluidextractamt);
         return fluidextractamt;
     }
 
     public static int getFluidExtractAmt(ItemStack card) {
-        CompoundTag compound = card.getTag();
-        if (compound == null || !compound.contains("fluidextractamt")) return 1000;
-        return compound.getInt("fluidextractamt");
+        return card.getOrDefault(LaserIODataComponents.FLUID_CARD_EXTRACT_AMT, Config.BASE_MILLI_BUCKETS_FLUID.get());
     }
 }

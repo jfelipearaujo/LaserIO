@@ -2,20 +2,21 @@ package com.direwolf20.laserio.common.blockentities.basebe;
 
 import com.direwolf20.laserio.common.blockentities.LaserConnectorAdvBE;
 import com.direwolf20.laserio.common.blockentities.LaserNodeBE;
-import com.direwolf20.laserio.util.DimBlockPos;
+import com.direwolf20.laserio.util.MiscTools;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.AABB;
 
-import javax.annotation.Nonnull;
 import java.awt.*;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -37,8 +38,8 @@ public class BaseLaserBE extends BlockEntity {
     }
 
     /** Gets the node at a specific world position, returning null if not a node */
-    public LaserNodeBE getNodeAt(DimBlockPos pos) {
-        BlockEntity be = pos.getLevel(level.getServer()).getBlockEntity(pos.blockPos);
+    public LaserNodeBE getNodeAt(GlobalPos pos) {
+        BlockEntity be = MiscTools.getLevel(level.getServer(), pos).getBlockEntity(pos.pos());
         if (be instanceof LaserNodeBE) return (LaserNodeBE) be;
         return null;
     }
@@ -68,21 +69,24 @@ public class BaseLaserBE extends BlockEntity {
      */
     public void discoverAllNodes() {
         //System.out.println("Discovering all nodes at: " + getBlockPos());
-        Set<DimBlockPos> otherNodesInNetwork = new HashSet<>(); //Fresh list of nodes
+        Set<GlobalPos> otherNodesInNetwork = new HashSet<>(); //Fresh list of nodes
 
-        Queue<DimBlockPos> nodesToCheck = new LinkedList<>();
-        Set<DimBlockPos> checkedNodes = new HashSet<>();
-        nodesToCheck.add(new DimBlockPos(this.getLevel(), getBlockPos())); //We should add this block to itself, as a starting point -- also if its a node it'll add itself
+        Queue<GlobalPos> nodesToCheck = new LinkedList<>();
+        Set<GlobalPos> checkedNodes = new HashSet<>();
+        nodesToCheck.add(new GlobalPos(this.getLevel().dimension(), getBlockPos())); //We should add this block to itself, as a starting point -- also if its a node it'll add itself
 
         while (nodesToCheck.size() > 0) {
-            DimBlockPos posToCheck = nodesToCheck.remove(); //Pop the stack
+            GlobalPos posToCheck = nodesToCheck.remove(); //Pop the stack
             if (!checkedNodes.add(posToCheck))
                 continue; //Don't check nodes we've checked before
-            BlockEntity be = posToCheck.getLevel(getLevel().getServer()).getBlockEntity(posToCheck.blockPos);
+            Level nodeLevel = MiscTools.getLevel(getLevel().getServer(), posToCheck);
+            if (nodeLevel == null)
+                continue; //Never seen this before but Shartte found a way!
+            BlockEntity be = nodeLevel.getBlockEntity(posToCheck.pos());
             if (be instanceof BaseLaserBE baseLaserBE) {
-                Set<DimBlockPos> connectedNodes = baseLaserBE.getWorldConnections(); //Get all the nodes this node is connected to
-                if (be instanceof LaserConnectorAdvBE laserConnectorAdvBE && (laserConnectorAdvBE.getPartnerDimBlockPos() != null))
-                    connectedNodes.add(laserConnectorAdvBE.getPartnerDimBlockPos());
+                Set<GlobalPos> connectedNodes = baseLaserBE.getWorldConnections(); //Get all the nodes this node is connected to
+                if (be instanceof LaserConnectorAdvBE laserConnectorAdvBE && (laserConnectorAdvBE.getPartnerGlobalPos() != null))
+                    connectedNodes.add(laserConnectorAdvBE.getPartnerGlobalPos());
                 nodesToCheck.addAll(connectedNodes); //Add them to the list to check
                 baseLaserBE.setColor(getColor(), getWrenchAlpha());
                 baseLaserBE.markDirtyClient();
@@ -90,7 +94,7 @@ public class BaseLaserBE extends BlockEntity {
                     otherNodesInNetwork.add(posToCheck);
             }
         }
-        for (DimBlockPos pos : otherNodesInNetwork) { //Go through all the inventory nodes we've found and tell them about all the inventory nodes...
+        for (GlobalPos pos : otherNodesInNetwork) { //Go through all the inventory nodes we've found and tell them about all the inventory nodes...
             LaserNodeBE nodeBE = getNodeAt(pos);
             if (nodeBE == null) continue;
             nodeBE.setOtherNodesInNetwork(otherNodesInNetwork);
@@ -190,10 +194,10 @@ public class BaseLaserBE extends BlockEntity {
      * Get the connections world coordinates
      * Assumes the same dimension, because inter-dimensional connections are ONLY handled by advanced nodes
      */
-    public Set<DimBlockPos> getWorldConnections() {
-        Set<DimBlockPos> worldConnections = new HashSet<>();
+    public Set<GlobalPos> getWorldConnections() {
+        Set<GlobalPos> worldConnections = new HashSet<>();
         for (BlockPos relativePos : connections)
-            worldConnections.add(new DimBlockPos(level, getWorldPos(relativePos)));
+            worldConnections.add(new GlobalPos(level.dimension(), getWorldPos(relativePos)));
         return worldConnections;
     }
 
@@ -265,21 +269,21 @@ public class BaseLaserBE extends BlockEntity {
 
     /** Misc Methods for TE's */
     @Override
-    public void load(CompoundTag tag) {
-        super.load(tag);
+    public void loadAdditional(CompoundTag tag, HolderLookup.Provider provider) {
+        super.loadAdditional(tag, provider);
         connections.clear();
         ListTag connections = tag.getList("connections", Tag.TAG_COMPOUND);
         for (int i = 0; i < connections.size(); i++) {
-            BlockPos blockPos = NbtUtils.readBlockPos(connections.getCompound(i).getCompound("pos"));
+            BlockPos blockPos = NbtUtils.readBlockPos(connections.getCompound(i), "pos").orElse(BlockPos.ZERO);
             this.connections.add(blockPos);
         }
         renderedConnections.clear();
         ListTag renderedConnections = tag.getList("renderedConnections", Tag.TAG_COMPOUND);
         for (int i = 0; i < renderedConnections.size(); i++) {
-            BlockPos blockPos = NbtUtils.readBlockPos(renderedConnections.getCompound(i).getCompound("pos"));
+            BlockPos blockPos = NbtUtils.readBlockPos(renderedConnections.getCompound(i), "pos").orElse(BlockPos.ZERO);
             this.renderedConnections.add(blockPos);
         }
-        BlockPos originalPos = NbtUtils.readBlockPos(tag.getCompound("myWorldPos"));
+        BlockPos originalPos = NbtUtils.readBlockPos(tag, "myWorldPos").orElse(BlockPos.ZERO);
         if (!originalPos.equals(getBlockPos()) && !originalPos.equals(BlockPos.ZERO))
             validateConnections(originalPos);
         if (tag.contains("laserColor")) {
@@ -289,8 +293,8 @@ public class BaseLaserBE extends BlockEntity {
     }
 
     @Override
-    public void saveAdditional(CompoundTag tag) {
-        super.saveAdditional(tag);
+    public void saveAdditional(CompoundTag tag, HolderLookup.Provider provider) {
+        super.saveAdditional(tag, provider);
         ListTag connections = new ListTag();
         for (BlockPos blockPos : this.connections) {
             CompoundTag comp = new CompoundTag();
@@ -311,12 +315,6 @@ public class BaseLaserBE extends BlockEntity {
         tag.putInt("wrenchAlpha", getWrenchAlpha());
     }
 
-    @Nonnull
-    @Override
-    public AABB getRenderBoundingBox() {
-        return new AABB(getBlockPos().above(10).north(10).east(10), getBlockPos().below(10).south(10).west(10));
-    }
-
     @Override
     public ClientboundBlockEntityDataPacket getUpdatePacket() {
         // Vanilla uses the type parameter to indicate which type of tile entity (command block, skull, or beacon?) is receiving the packet, but it seems like Forge has overridden this behavior
@@ -324,20 +322,20 @@ public class BaseLaserBE extends BlockEntity {
     }
 
     @Override
-    public void handleUpdateTag(CompoundTag tag) {
-        this.load(tag);
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider lookupProvider) {
+        this.loadAdditional(tag, lookupProvider);
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public CompoundTag getUpdateTag(HolderLookup.Provider provider) {
         CompoundTag tag = new CompoundTag();
-        saveAdditional(tag);
+        saveAdditional(tag, provider);
         return tag;
     }
 
     @Override
-    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt) {
-        this.load(pkt.getTag());
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider lookupProvider) {
+        super.onDataPacket(net, pkt, lookupProvider);
     }
 
     public void markDirtyClient() {
